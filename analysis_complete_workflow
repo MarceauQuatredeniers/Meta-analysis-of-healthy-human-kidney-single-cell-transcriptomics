@@ -3,7 +3,7 @@ var s = "R syntax highlighting";
 print s
 ```
 
-`# ------------------------------ #
+`# ------------------------------ #`
 # INITIALISATION
 # ------------------------------ #
 # Load the necessary packages
