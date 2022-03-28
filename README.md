@@ -1,4 +1,4 @@
-# **Meta-analysis-of-renal-sc-sn-RNAseq**
+# **Meta-analysis of renal scRNA-seq and snRNA-seq datasets**
 **Here's the code to reproduce the analysis presented in _Quatredeniers et al. Sci Data. 2022._ doi: XXX**
 <br />
 [Meta-analysis of renal single cell and single nucleus transcriptomics reveals the consensus signatures of kidney cell types](https://github.com/MarceauQuatredeniers/Meta-analysis-of-renal-sc-sn-RNAseq) 
