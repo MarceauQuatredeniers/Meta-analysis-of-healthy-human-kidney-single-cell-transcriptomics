@@ -3,7 +3,9 @@ var s = "R syntax highlighting";
 print s
 ```
 
-`# ------------------------------ #`
+Inline `code` has `back-ticks around` it.
+
+`# ------------------------------ #
 # INITIALISATION
 # ------------------------------ #
 # Load the necessary packages
