@@ -1,11 +1,11 @@
 # ------------------------------ #
-# Computational analysis of kidney single cell datasets
-# The overall goal is to integrate different control samples from various sources to get an average overview of the kidney cell landscape 
+# Complete analysis workflow of kidney scRNA-seq and snRNA-seq datasets
+# publication: Quatredeniers M, et al. Sci Data. 2022. doi: XXX
 # ------------------------------ #
 
-# BiocManager::install("slingshot")
 # ------------------------------ #
 # INITIALISATION
+# ------------------------------ #
 # Load the necessary packages
 library(Rcpp)
 library(fgsea)
@@ -13,17 +13,14 @@ library(ggplot2)
 library(ggpubr)
 library(tidyverse)
 library(Seurat)
-# library(CelliD)
 library(readr)
-# library(harmony)
 library(cowplot)
-# library(slingshot, quietly = F)
-# Then set the path to the relevant folders
-RData_dir <- "/data-cbl/mquatre/p2_scrnaseq_renal_landscape/reports/220314_SCTransform_SeuratV4/"
-reports_dir <- "/data-cbl/mquatre/p2_scrnaseq_renal_landscape/reports/220314_SCTransform_SeuratV4/"
-data_processed_dir <- "/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/processed/220314_SCTransform_SeuratV4/"
-figure_dir <- "/data-cbl/mquatre/p2_scrnaseq_renal_landscape/reports/220314_SCTransform_SeuratV4/figures/"
-# Finally set options if needed
+# Set paths to the relevant folders
+RData_dir <- "~/wd/meta_analysis/reports/"
+reports_dir <- "~/wd/meta_analysis/reports/"
+data_processed_dir <- "~/wd/meta_analysis/data/processed/"
+figure_dir <- "~/wd/meta_analysis/reports/figures/"
+# Set options if needed
 options(ggrepel.max.overlaps = Inf)
 
 
