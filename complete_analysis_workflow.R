@@ -1,7 +1,8 @@
 # ------------------------------ #
-# Complete analysis workflow of kidney scRNA-seq and snRNA-seq datasets
-# publication: Quatredeniers M, et al. Sci Data. 2022. doi: XXX
+# The workflow presented in this script allows to reproduce the meta-analysis of kidney scRNA-seq and snRNA-seq datasets
+# presented in Quatredeniers M, et al. XXX. 2022. | PMID:  | doi: XXX
 # ------------------------------ #
+
 
 # ------------------------------ #
 # INITIALISATION
@@ -16,7 +17,7 @@ library(Seurat)
 library(readr)
 library(cowplot)
 # Set paths to the relevant folders
-RData_dir <- "~/wd/meta_analysis/reports/"
+RData_dir <- "~/wd/meta_analysis/data/rdata/"
 reports_dir <- "~/wd/meta_analysis/reports/"
 data_processed_dir <- "~/wd/meta_analysis/data/processed/"
 figure_dir <- "~/wd/meta_analysis/reports/figures/"
@@ -50,7 +51,6 @@ for (i in 1:length(gse131882)) {
 gse131882[[1]]@meta.data$sex.ident <- "M"
 gse131882[[2]]@meta.data$sex.ident <- "M"
 gse131882[[3]]@meta.data$sex.ident <- "F"
-
 # ------------------------------ #
 # (sc) Liao J, et al. Single-cell RNA sequencing of human kidney. Sci Data. 2020 Jan 2;7(1):4. | PMID 31896769 | GSE131685 (GSM4145204, GSM4145205, GSM4145206)
 gsm4145204 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE131685/GSM4145204/")
@@ -170,8 +170,7 @@ for (i in 1:length(gse140989)) {
   gse140989[[i]]@meta.data$techno.ident <- "scRNAseq"
   gse140989[[i]]@meta.data$sex.ident <- "?"
 }
-# We need 2 different pipelines to process data from sn- and scRNA-seq studies
-# (the overall strategy is to integrate scRNA-seq samples in one hand, integrate snRNA-seq studies in another hand, then integrate the 2 datasets together)
+# We need 2 different pipelines to process data from snRNA-seq and scRNA-seq studies
 # Create a list of scRNA-seq S4 objects to integrate
 sc_gsm_list <- c(gse131685, gse159115, gse140989)
 sc_gsm_names <- c("GSM4145204", "GSM4145205", "GSM4145206", "GSM4819726", "GSM4819728", "GSM4819730-1", "GSM4819733", "GSM4819735", "GSM4191941", "GSM4191942", "GSM4191943", "GSM4191944", "GSM4191945", "GSM4191946", "GSM4191947", "GSM4191948", "GSM4191949", "GSM4191950", "GSM4191951", "GSM4191952", "GSM4191953", "GSM4191954", "GSM4191955", "GSM4191956", "GSM4191957", "GSM4191958", "GSM4191959", "GSM4191960", "GSM4191961", "GSM4191962", "GSM4191963", "GSM4191964")
@@ -195,7 +194,7 @@ for (i in 1:length(sc_gsm_list)) {
   p1 <- VlnPlot(sc_gsm_list[[i]], features = c("nFeature_RNA", "nCount_RNA", "percent.mt", "percent.rpl", "percent.rps"), pt.size = 0.1, ncol = 5)
   p1 > ggsave(filename = paste(figure_dir, "1_", sc_gsm_names[[i]], "_sc_QC_metrics.png", sep=""), width = 250, height = 150, units = "mm")
 }
-# Store and save these values in a dataframe
+# Store and save these values
 tmp_df <- data.frame("techno.ident" = c(0), "batch.ident" = c(0), "orig.ident" = c(0), "n.cells" = c(0), "n.features" = c(0), "n.count" = c(0), "percent.mt" = c(0), "percent.ribo" = c(0))
 for (i in 1:length(sc_gsm_list)) {
   tmp_df[i, "techno.ident"] <- as.character(as.data.frame(table(sc_gsm_list[[i]]$techno.ident))[[1]])
@@ -207,8 +206,8 @@ for (i in 1:length(sc_gsm_list)) {
   tmp_df[i, "percent.mt"] <- format(round(mean(sc_gsm_list[[i]]$percent.mt), digits = 2), nsmall = 2)
   tmp_df[i, "percent.ribo"] <- format(round(mean(sc_gsm_list[[i]]$percent.ribo), digits = 2), nsmall = 2)
 }
-write.table(tmp_df, paste(reports_dir, "1_sc_gsm_list_SampleMetrics_BeforeFiltering.csv", sep=""), sep=",") # export sample characteristics as a table
-# Thresholds settings for scRNA-seq samples: percent.mt < 30% 
+write.table(tmp_df, paste(reports_dir, "1_sc_gsm_list_SampleMetrics_BeforeFiltering.csv", sep=""), sep=",") # export sample characteristics
+# Thresholds settings for scRNA-seq samples: 200 < nFeatures_RNA < 3500 & percent.mt < 30% 
 tmp_df <- data.frame("techno.ident" = c(0), "batch.ident" = c(0), "orig.ident" = c(0), "n.cells" = c(0), "n.features" = c(0), "n.count" = c(0), "percent.mt" = c(0), "percent.ribo" = c(0))
 for (i in 1:length(sc_gsm_list)) {
   sc_gsm_list[[i]] <- subset(sc_gsm_list[[i]], subset = nFeature_RNA > 200 & nFeature_RNA < 3500 & percent.mt < 30)
@@ -222,12 +221,10 @@ for (i in 1:length(sc_gsm_list)) {
   tmp_df[i, "percent.mt"] <- format(round(mean(sc_gsm_list[[i]]$percent.mt), digits = 2), nsmall = 2)
   tmp_df[i, "percent.ribo"] <- format(round(mean(sc_gsm_list[[i]]$percent.ribo), digits = 2), nsmall = 2)
 } 
-write.table(tmp_df, paste(reports_dir, "1_sc_gsm_list_SampleMetrics_AfterFiltering.csv", sep=""), sep=",") # export sample characteristics as a table
+write.table(tmp_df, paste(reports_dir, "1_sc_gsm_list_SampleMetrics_AfterFiltering.csv", sep=""), sep=",") # export sample characteristics
 sc_gsm_merge <- merge(sc_gsm_list[[1]], c(sc_gsm_list[2:length(sc_gsm_list)]))
 saveRDS(sc_gsm_merge, paste(RData_dir, "1_sc_gsm_merge_backup.rds", sep = "")) # save sc_gsm_merge in a .rds file
-# sc_gsm_merge <- readRDS(paste(RData_dir, "1_sc_gsm_merge_backup.rds", sep = "")) # load sc_gsm_merge backup
 saveRDS(sc_gsm_list, paste(RData_dir, "1_sc_gsm_list_backup.rds", sep = "")) # save sc_gsm_list in a .rds file
-# sc_gsm_list <- readRDS(paste(RData_dir, "1_sc_gsm_list_backup.rds", sep = "")) # load sc_gsm_list backup
 # ------------------------------ #
 # B. For snRNA-seq dataset
 # ------------------------------ #
@@ -241,7 +238,7 @@ for (i in 1:length(sn_gsm_list)) {
   p1 <- VlnPlot(sn_gsm_list[[i]], features = c("nFeature_RNA", "nCount_RNA", "percent.mt", "percent.rpl", "percent.rps"), pt.size = 0.1, ncol = 5)
   p1 > ggsave(filename = paste(figure_dir, "1_", sn_gsm_names[[i]], "_sn_QC_metrics.png", sep=""), width = 250, height = 150, units = "mm")
 }
-# Store and save these values in a dataframe
+# Store and save these values
 tmp_df <- data.frame("techno.ident" = c(0), "batch.ident" = c(0), "orig.ident" = c(0), "n.cells" = c(0), "n.features" = c(0), "n.count" = c(0), "percent.mt" = c(0), "percent.ribo" = c(0))
 for (i in 1:length(sn_gsm_list)) {
   tmp_df[i, "techno.ident"] <- as.character(as.data.frame(table(sn_gsm_list[[i]]$techno.ident))[[1]])
@@ -253,11 +250,11 @@ for (i in 1:length(sn_gsm_list)) {
   tmp_df[i, "percent.mt"] <- format(round(mean(sn_gsm_list[[i]]$percent.mt), digits = 2), nsmall = 2)
   tmp_df[i, "percent.ribo"] <- format(round(mean(sn_gsm_list[[i]]$percent.ribo), digits = 2), nsmall = 2)
 }
-write.table(tmp_df, paste(reports_dir, "1_sn_gsm_list_SampleMetrics_BeforeFiltering.csv", sep=""), sep=",") # export sample characteristics as a table
-# Thresholds settings for snRNA-seq samples: percent.mt < 5% 
+write.table(tmp_df, paste(reports_dir, "1_sn_gsm_list_SampleMetrics_BeforeFiltering.csv", sep=""), sep=",") # export sample characteristics
+# Thresholds settings for snRNA-seq samples: 200 < nFeatures_RNA < 3500 & percent.mt < 5% 
 tmp_df <- data.frame("techno.ident" = c(0), "batch.ident" = c(0), "orig.ident" = c(0), "n.cells" = c(0), "n.features" = c(0), "n.count" = c(0), "percent.mt" = c(0), "percent.ribo" = c(0))
 for (i in 1:length(sn_gsm_list)) {
-  sn_gsm_list[[i]] <- subset(sn_gsm_list[[i]], subset = nFeature_RNA > 200 & nFeature_RNA < 3500 & percent.mt < 30)
+  sn_gsm_list[[i]] <- subset(sn_gsm_list[[i]], subset = nFeature_RNA > 200 & nFeature_RNA < 3500 & percent.mt < 5)
   print(paste(sn_gsm_names[[i]], ': ',  'nCells = ', as.numeric(table(sn_gsm_list[[i]]$orig.ident)), ' | nFeatures = ', format(round(mean(sn_gsm_list[[i]]$nFeature_RNA), digits = 2), nsmall = 2), ' | nCount = ', format(round(mean(sn_gsm_list[[i]]$nCount_RNA), digits = 2), nsmall = 2), ' | %MT = ', format(round(mean(sn_gsm_list[[i]]$percent.mt), digits = 2), nsmall = 2), ' | %RPL = ', format(round(mean(sn_gsm_list[[i]]$percent.rpl), digits = 2), nsmall = 2), ' | %RPS = ', format(round(mean(sn_gsm_list[[i]]$percent.rps), digits = 2), nsmall = 2), sep = ''))
   tmp_df[i, "techno.ident"] <- as.character(as.data.frame(table(sn_gsm_list[[i]]$techno.ident))[[1]])
   tmp_df[i, "batch.ident"] <- as.character(as.data.frame(table(sn_gsm_list[[i]]$batch.ident))[[1]])
@@ -268,13 +265,11 @@ for (i in 1:length(sn_gsm_list)) {
   tmp_df[i, "percent.mt"] <- format(round(mean(sn_gsm_list[[i]]$percent.mt), digits = 2), nsmall = 2)
   tmp_df[i, "percent.ribo"] <- format(round(mean(sn_gsm_list[[i]]$percent.ribo), digits = 2), nsmall = 2)
 } 
-write.table(tmp_df, paste(reports_dir, "1_sn_gsm_list_SampleMetrics_AfterFiltering.csv", sep=""), sep=",") # export sample characteristics as a table
+write.table(tmp_df, paste(reports_dir, "1_sn_gsm_list_SampleMetrics_AfterFiltering.csv", sep=""), sep=",") # export sample characteristics
 sn_gsm_merge <- merge(sn_gsm_list[[1]], c(sn_gsm_list[2:length(sn_gsm_list)]))
 saveRDS(sn_gsm_merge, paste(RData_dir, "1_sn_gsm_merge_backup.rds", sep = "")) # save sn_gsm_merge in a .rds file
-# sn_gsm_merge <- readRDS(paste(RData_dir, "1_sn_gsm_merge_backup.rds", sep = "")) # load sn_gsm_merge backup
 saveRDS(sn_gsm_list, paste(RData_dir, "1_sn_gsm_list_backup.rds", sep = "")) # save sn_gsm_list in a .rds file
-# sn_gsm_list <- readRDS(paste(RData_dir, "1_sn_gsm_list_backup.rds", sep = "")) # load sn_gsm_list backup
-# Remove useless variables to free up memory
+# Free up RAM
 rm(gsm3320197, gsm4572192, gsm4572193, gsm4572194, gsm4145204, gsm4145205, gsm4145206, gsm3135714, gsm4819726, gsm4819728, gsm4819730, gsm4819731, gsm4819733, gsm4819735, gsm4191941, 
    gsm4191942, gsm4191943, gsm4191944, gsm4191945, gsm4191946, gsm4191947, gsm4191948, gsm4191949, gsm4191950, gsm4191951, gsm4191952, gsm4191953, gsm4191954, gsm4191955, 
    gsm4191956, gsm4191957, gsm4191958, gsm4191959, gsm4191960, gsm4191961, gsm4191962, gsm4191963, gsm4191964, gse131685, gse131882, gse140989, gse159115, gse151302, gsm4572195, gsm4572196, sc_gsm_names, sn_gsm_names, tmp_df)
@@ -1272,11 +1267,3 @@ rm(gse121862_integrated)
 
 
 
-# --------------------------------------------------
-# 19/01/2022 - Figures pour concours Amandine
-cytokine_list <- c("BTC", "CCL2", "CCL5", "CCL8", "CCL17", "CCL19", "CX3CL1", "CXCL1", "CXCL9", "CXCL10", "CXCL12", "CXCL14", "CXCL16", "IL1RN", "IL33", "IL34", "LCN2", "LGALS9", "LIF", "PDGFD", "PTN", "TIMP1", "TNFSF8")
-receptor_list <- c("CCR5", "CCR1", "CCR2", "CCR7", "CX3CR1", "CXCR2", "CXCR3", "CXCR4", "CXCR6", "GPR35", "IL1R1", "IL1RL1", "CSF1R", "HAVCR2")
-p1 <- DotPlot(sc_gsm_integrated, features = c(cytokine_list, receptor_list), group.by = "annot_clusters", assay = "SCT", cols = c("blue", "red")) + RotatedAxis()
-p1 %>% ggsave(filename = paste(figure_dir, "x_dotplot_concours_av.png", sep = ""), width = 400, height = 225, units = "mm")
-p1 <- DoHeatmap(subset(sc_gsm_integrated, downsample = 200), features = c(cytokine_list, receptor_list), group.by = "annot_clusters", group.bar = T, assay = "SCT", slot = "data") + NoLegend()
-p1 %>% ggsave(filename = paste(figure_dir, "x_heatmap_concours_av.png", sep=""), width = 450, height = 225, units = "mm")
