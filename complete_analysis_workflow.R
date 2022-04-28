@@ -21,7 +21,7 @@ RData_dir <- "~/wd/meta_analysis/data/rdata/"
 reports_dir <- "~/wd/meta_analysis/reports/"
 data_processed_dir <- "~/wd/meta_analysis/data/processed/"
 figure_dir <- "~/wd/meta_analysis/reports/figures/"
-# Set options if needed
+# Set options
 options(ggrepel.max.overlaps = Inf)
 
 
@@ -277,42 +277,35 @@ rm(sn_gsm_merge, sn_gsm_list)
 
 
 # ------------------------------ #
-# II. INTEGRATION USING Seurat v4
+# II. INTEGRATION
 # ------------------------------ #
 # A. For scRNA-seq dataset
 # ------------------------------ #
-# First, check the batch effect (thus without integration)
+# First, check the level of the batch effects
 sc_gsm_merge <- SCTransform(sc_gsm_merge, method = "glmGamPoi", vars.to.regress = "percent.mt", verbose = T)
 DefaultAssay(sc_gsm_merge) <- "SCT"
-# sc_gsm_merge <- NormalizeData(sc_gsm_merge, assay = "RNA", verbose = T)
-# sc_gsm_merge <- FindVariableFeatures(sc_gsm_merge)
-# sc_gsm_merge <- ScaleData(sc_gsm_merge, vars.to.regress = "percent.mt")
 sc_gsm_merge <- RunPCA(sc_gsm_merge, nmcs = 50, features = VariableFeatures(sc_gsm_merge), verbose = T)
 p1 <- DimPlot(sc_gsm_merge, reduction = "pca", group.by = "orig.ident", pt.size = 0.1)
 p2 <- VlnPlot(sc_gsm_merge, features = "PC_1", group.by = "orig.ident", pt.size = 0.1)
 plot_grid(p1, p2, ncol = 2, rel_widths = c(1, 1.5)) %>% ggsave(filename = paste(figure_dir, "2_sc_gsm_merge_check_PCA.png", sep=""), width = 500, height = 150, units = "mm")
 saveRDS(sc_gsm_merge, paste(RData_dir, "2_sc_gsm_merge_backup.rds", sep = "")) # save sc_gsm_merge in a .rds file
-# sc_gsm_merge <- readRDS(paste(RData_dir, "2_sc_gsm_merge_backup.rds", sep = "")) # load sc_gsm_merge backup
 rm(sc_gsm_merge)
-# ------------------------------ #
-# Preparation
+# Then, process the samples
+# Normalisation step
 for (i in 1:length(sc_gsm_list)) {
   sc_gsm_list[[i]] <- SCTransform(sc_gsm_list[[i]], method = "glmGamPoi", vars.to.regress = "percent.mt", verbose = T)
   DefaultAssay(sc_gsm_list[[i]]) <- "SCT"
   sc_gsm_list[[i]] <- RunPCA(sc_gsm_list[[i]], features = VariableFeatures(sc_gsm_list[[i]]), assay = "SCT", npcs = 50, verbose = T)
 }
+# Integration step
 integration_features <- SelectIntegrationFeatures(object.list = sc_gsm_list, nfeatures = 2500)
 sc_gsm_list <- PrepSCTIntegration(object.list = sc_gsm_list, anchor.features = integration_features)
 sc_gsm_anchors <- FindIntegrationAnchors(object.list = sc_gsm_list, normalization.method = "SCT", anchor.features = integration_features, reduction = "rpca")
-saveRDS(sc_gsm_anchors, paste(RData_dir, "2_sc_gsm_anchors_backup.rds", sep = ""))
-saveRDS(sc_gsm_list, paste(RData_dir, "2_sc_gsm_list_backup.rds", sep = "")) 
-# sc_gsm_list <- readRDS(paste(RData_dir, "2_sc_gsm_list_backup.rds", sep = "")) 
+saveRDS(sc_gsm_list, paste(RData_dir, "2_sc_gsm_list_backup.rds", sep = ""))  
 rm(sc_gsm_list)
 sc_gsm_integrated <- IntegrateData(anchorset = sc_gsm_anchors, normalization.method = "SCT", new.assay.name = "seurat.integration")
 DefaultAssay(sc_gsm_integrated) <- "seurat.integration"
-rm(sc_gsm_anchors)
 saveRDS(sc_gsm_integrated, paste(RData_dir, "2_sc_gsm_integrated_backup.rds", sep = "")) 
-# sc_gsm_integrated <- readRDS(paste(RData_dir, "2_sc_gsm_integrated_backup.rds", sep = ""))
 # Run dimensional reductions
 sc_gsm_integrated <- RunPCA(sc_gsm_integrated, features = VariableFeatures(sc_gsm_integrated@assays$seurat.integration), assay = "seurat.integration", npcs = 50, verbose = T)
 ElbowPlot(sc_gsm_integrated, ndims = 30, reduction = "pca") %>% ggsave(filename = paste(figure_dir, "2_sc_gsm_integrated_check_PCA_dims_ElbowPlot.png", sep=""), width = 150, height = 150, units = "mm")
@@ -324,21 +317,19 @@ p2 <- DimPlot(sc_gsm_integrated, reduction = "umap", group.by = "batch.ident", l
 plot_grid(p1, p2, ncol = 2, rel_widths = c(1.2, 1)) %>% ggsave(filename = paste(figure_dir, "2_sc_gsm_integrated_batch_vs_sample_ident.png", sep=""), width = 450, height = 150, units = "mm")
 p2 <- DimPlot(sc_gsm_integrated, reduction = "umap", group.by = "techno.ident", label = F, pt.size = 0.1) # check also batch integration
 plot_grid(p1, p2, ncol = 2, rel_widths = c(1.2, 1)) %>% ggsave(filename = paste(figure_dir, "2_sc_gsm_integrated_techno_vs_sample_ident.png", sep=""), width = 450, height = 150, units = "mm")
-# Finally, check the correction of the batch effect (thus after integration)
+# Finally, check the correction of the batch effects
 p1 <- DimPlot(sc_gsm_integrated, reduction = "pca", group.by = "orig.ident", pt.size = 0.1)
 p2 <- VlnPlot(sc_gsm_integrated, features = "PC_1", group.by = "orig.ident", pt.size = 0.1)
 plot_grid(p1, p2, ncol = 2, rel_widths = c(1, 1.5)) %>% ggsave(filename = paste(figure_dir, "2_sc_gsm_integrated_check_PCA.png", sep=""), width = 500, height = 150, units = "mm")
-# Save sc_gsm_integrated before clustering
+# Save sc_gsm_integrated dataset
 saveRDS(sc_gsm_integrated, paste(RData_dir, "2_sc_gsm_integrated_seuratv4_backup2.rds", sep = ""))
-# sc_gsm_integrated <- readRDS(paste(RData_dir, "2_sc_gsm_integrated_seuratv4_backup2.rds", sep = "")) # load sc_gsm_integrated backup
 # ------------------------------ #
-# Integrate with Harmony for the sake of comparison
+# Integrate with Harmony for comparison
 library(harmony)
 sc_gsm_merge <- readRDS(paste(RData_dir, "2_sc_gsm_merge_backup.rds", sep = "")) # load sc_gsm_merge backup
 # Integrating using Harmony
 DefaultAssay(sc_gsm_merge) <- "SCT"
 sc_gsm_merge <- RunHarmony(sc_gsm_merge, group.by.vars = "orig.ident", project.dim = F, plot_convergence = T, verbose = T, assay.use = "SCT")
-# harmony_embeddings <- Embeddings(sc_gsm_merge, "harmony")
 p1 <- DimPlot(sc_gsm_merge, reduction = "harmony", group.by = "orig.ident", pt.size = 0.1)
 p2 <- VlnPlot(sc_gsm_merge, features = "harmony_1", group.by = "orig.ident", pt.size = 0.1)
 plot_grid(p1, p2, ncol = 2, rel_widths = c(1, 1.5)) %>% ggsave(filename = paste(figure_dir, "2_sc_gsm_integrated_check_harmony.png", sep=""), width = 500, height = 150, units = "mm")
@@ -354,47 +345,39 @@ p1 %>% ggsave(filename = paste(figure_dir, "2_sc_gsm_integrated_check_harmony_Or
 p1 <- DimPlot(sc_gsm_merge, reduction = "umap", group.by = "batch.ident", label = F, pt.size = 0.1)
 p1[[1]]$layers[[1]]$aes_params$alpha = 0.2
 p1 %>% ggsave(filename = paste(figure_dir, "2_sc_gsm_integrated_check_harmony_BatchIdent.png", sep=""), width = 150, height = 130, units = "mm")
-# save sc_gsm_merge before clustering
+# save sc_gsm_merge dataset
 saveRDS(sc_gsm_merge, paste(RData_dir, "2_sc_gsm_integrated_harmony_backup.rds", sep = ""))
-# sc_gsm_merge <- readRDS(paste(RData_dir, "2_sc_gsm_integrated_harmony_backup.rds", sep = "")) # load sc_gsm_merge backup
 # ------------------------------ #
 # B. For snRNA-seq dataset
 # ------------------------------ #
 # Reload the datasets
-sn_gsm_merge <- readRDS(paste(RData_dir, "1_sn_gsm_merge_backup.rds", sep = "")) # load sn_gsm_merge backup
-sn_gsm_list <- readRDS(paste(RData_dir, "1_sn_gsm_list_backup.rds", sep = "")) # load sn_gsm_list backup
-# First, check the batch effect (thus without integration)
+sn_gsm_merge <- readRDS(paste(RData_dir, "1_sn_gsm_merge_backup.rds", sep = ""))
+sn_gsm_list <- readRDS(paste(RData_dir, "1_sn_gsm_list_backup.rds", sep = ""))
+# First, check the level of the batch effects
 sn_gsm_merge <- SCTransform(sn_gsm_merge, method = "glmGamPoi", vars.to.regress = "percent.mt", verbose = T)
 DefaultAssay(sn_gsm_merge) <- "SCT"
-# sn_gsm_merge <- NormalizeData(sn_gsm_merge, assay = "RNA", verbose = T)
-# sn_gsm_merge <- FindVariableFeatures(sn_gsm_merge)
-# sn_gsm_merge <- ScaleData(sn_gsm_merge, vars.to.regress = "percent.mt")
 sn_gsm_merge <- RunPCA(sn_gsm_merge, nmcs = 50, features = VariableFeatures(sn_gsm_merge), verbose = T)
 p1 <- DimPlot(sn_gsm_merge, reduction = "pca", group.by = "orig.ident", pt.size = 0.1)
 p2 <- VlnPlot(sn_gsm_merge, features = "PC_1", group.by = "orig.ident", pt.size = 0.1)
 plot_grid(p1, p2, ncol = 2, rel_widths = c(1, 1.5)) %>% ggsave(filename = paste(figure_dir, "2_sn_gsm_merge_check_PCA.png", sep=""), width = 500, height = 150, units = "mm")
-saveRDS(sn_gsm_merge, paste(RData_dir, "2_sn_gsm_merge_backup.rds", sep = "")) # save sn_gsm_merge in a .rds file
-# sn_gsm_merge <- readRDS(paste(RData_dir, "2_sn_gsm_merge_backup.rds", sep = "")) # load sn_gsm_merge backup
+saveRDS(sn_gsm_merge, paste(RData_dir, "2_sn_gsm_merge_backup.rds", sep = "")) # save sn_gsm_merge
 rm(sn_gsm_merge)
-# ------------------------------ #
-# Preparation
+# Then, process the samples
+# Normalisation step
 for (i in 1:length(sn_gsm_list)) {
   sn_gsm_list[[i]] <- SCTransform(sn_gsm_list[[i]], method = "glmGamPoi", vars.to.regress = "percent.mt", verbose = T)
   DefaultAssay(sn_gsm_list[[i]]) <- "SCT"
   sn_gsm_list[[i]] <- RunPCA(sn_gsm_list[[i]], features = VariableFeatures(sn_gsm_list[[i]]), assay = "SCT", npcs = 50, verbose = T)
 }
+# Integration step
 integration_features <- SelectIntegrationFeatures(object.list = sn_gsm_list, nfeatures = 2500)
 sn_gsm_list <- PrepSCTIntegration(object.list = sn_gsm_list, anchor.features = integration_features)
 sn_gsm_anchors <- FindIntegrationAnchors(object.list = sn_gsm_list, normalization.method = "SCT", anchor.features = integration_features, reduction = "rpca")
-saveRDS(sn_gsm_anchors, paste(RData_dir, "2_sn_gsm_anchors_backup.rds", sep = ""))
-saveRDS(sn_gsm_list, paste(RData_dir, "2_sn_gsm_list_backup.rds", sep = "")) 
-# sn_gsm_list <- readRDS(paste(RData_dir, "2_sn_gsm_list_backup.rds", sep = "")) 
+saveRDS(sn_gsm_list, paste(RData_dir, "2_sn_gsm_list_backup.rds", sep = ""))  
 rm(sn_gsm_list)
 sn_gsm_integrated <- IntegrateData(anchorset = sn_gsm_anchors, normalization.method = "SCT", new.assay.name = "seurat.integration")
 DefaultAssay(sn_gsm_integrated) <- "seurat.integration"
-rm(sn_gsm_anchors)
 saveRDS(sn_gsm_integrated, paste(RData_dir, "2_sn_gsm_integrated_backup.rds", sep = "")) 
-# sn_gsm_integrated <- readRDS(paste(RData_dir, "2_sn_gsm_integrated_backup.rds", sep = ""))
 # Run dimensional reductions
 sn_gsm_integrated <- RunPCA(sn_gsm_integrated, features = VariableFeatures(sn_gsm_integrated@assays$seurat.integration), assay = "seurat.integration", npcs = 50, verbose = T)
 ElbowPlot(sn_gsm_integrated, ndims = 30, reduction = "pca") %>% ggsave(filename = paste(figure_dir, "2_sn_gsm_integrated_check_PCA_dims_ElbowPlot.png", sep=""), width = 150, height = 150, units = "mm")
@@ -406,21 +389,19 @@ p2 <- DimPlot(sn_gsm_integrated, reduction = "umap", group.by = "batch.ident", l
 plot_grid(p1, p2, ncol = 2, rel_widths = c(1.2, 1)) %>% ggsave(filename = paste(figure_dir, "2_sn_gsm_integrated_batch_vs_sample_ident.png", sep=""), width = 450, height = 150, units = "mm")
 p2 <- DimPlot(sn_gsm_integrated, reduction = "umap", group.by = "techno.ident", label = F, pt.size = 0.1) # check also batch integration
 plot_grid(p1, p2, ncol = 2, rel_widths = c(1.2, 1)) %>% ggsave(filename = paste(figure_dir, "2_sn_gsm_integrated_techno_vs_sample_ident.png", sep=""), width = 450, height = 150, units = "mm")
-# Finally, check the correction of the batch effect (thus after integration)
+# Finally, check the correction of the batch effects
 p1 <- DimPlot(sn_gsm_integrated, reduction = "pca", group.by = "orig.ident", pt.size = 0.1)
 p2 <- VlnPlot(sn_gsm_integrated, features = "PC_1", group.by = "orig.ident", pt.size = 0.1)
 plot_grid(p1, p2, ncol = 2, rel_widths = c(1, 1.5)) %>% ggsave(filename = paste(figure_dir, "2_sn_gsm_integrated_check_PCA.png", sep=""), width = 500, height = 150, units = "mm")
 # Save sn_gsm_integrated before clustering
 saveRDS(sn_gsm_integrated, paste(RData_dir, "2_sn_gsm_integrated_seuratv4_backup2.rds", sep = ""))
-# sn_gsm_integrated <- readRDS(paste(RData_dir, "2_sn_gsm_integrated_seuratv4_backup2.rds", sep = "")) # load sn_gsm_integrated backup
 # ------------------------------ #
-# Integrate with Harmony for the sake of comparison
+# Integrate with Harmony for comparison
 library(harmony)
 sn_gsm_merge <- readRDS(paste(RData_dir, "2_sn_gsm_merge_backup.rds", sep = "")) # load sn_gsm_merge backup
 # Integrating using Harmony
 DefaultAssay(sn_gsm_merge) <- "SCT"
 sn_gsm_merge <- RunHarmony(sn_gsm_merge, group.by.vars = "orig.ident", project.dim = F, plot_convergence = T, verbose = T, assay.use = "SCT")
-# harmony_embeddings <- Embeddings(gsm_merge, "harmony")
 p1 <- DimPlot(sn_gsm_merge, reduction = "harmony", group.by = "orig.ident", pt.size = 0.1)
 p2 <- VlnPlot(sn_gsm_merge, features = "harmony_1", group.by = "orig.ident", pt.size = 0.1)
 plot_grid(p1, p2, ncol = 2, rel_widths = c(1, 1.5)) %>% ggsave(filename = paste(figure_dir, "2_sn_gsm_integrated_check_harmony.png", sep=""), width = 500, height = 150, units = "mm")
@@ -436,14 +417,12 @@ p1 %>% ggsave(filename = paste(figure_dir, "2_sn_gsm_integrated_check_harmony_Or
 p1 <- DimPlot(sn_gsm_merge, reduction = "umap", group.by = "batch.ident", label = F, pt.size = 0.1)
 p1[[1]]$layers[[1]]$aes_params$alpha = 0.2
 p1 %>% ggsave(filename = paste(figure_dir, "2_sn_gsm_integrated_check_harmony_BatchIdent.png", sep=""), width = 150, height = 130, units = "mm")
-# save sn_gsm_merge before clustering
+# save sn_gsm_merge dataset
 saveRDS(sn_gsm_merge, paste(RData_dir, "2_sn_gsm_integrated_harmony_backup.rds", sep = ""))
-# sn_gsm_merge <- readRDS(paste(RData_dir, "2_sn_gsm_integrated_harmony_backup.rds", sep = "")) # load sn_gsm_merge backup
-
 
 
 # ------------------------------ #
-# III. CLUSTERING
+# III. UNSUPERVISED CLUSTERING
 # ------------------------------ #
 # A. For scRNA-seq dataset
 # ------------------------------ #
@@ -453,10 +432,9 @@ p1 <- DimPlot(sc_gsm_integrated, reduction = "umap", group.by = "seurat_clusters
 p2 <- DimPlot(sc_gsm_integrated, reduction = "umap", group.by = "orig.ident", pt.size = 0.1)
 plot_grid(p1, p2, ncol = 2, rel_widths = c(1, 1.15)) %>% ggsave(filename = paste(figure_dir, "3_sc_gsm_integrated_SeuratClusters_res3.png", sep=""), width = 450, height = 150, units = "mm")
 saveRDS(sc_gsm_integrated, paste(RData_dir, "3_sc_gsm_integrated_seuratv4_backup.rds", sep = ""))
-# sc_gsm_integrated <- readRDS(paste(RData_dir, "3_sc_gsm_integrated_seuratv4_backup.rds", sep = "")) # load sc_gsm_integrated backup
 # ------------------------------ #
-# CHECK CLUSTER COMPOSITION
-# Check how much samples are represented in each of the clusters
+# Check cluster composition
+# i.e. how much samples are represented in each cluster
 cluster_count <- as.data.frame(table(subset(sc_gsm_integrated, seurat_clusters == as.character(0))@meta.data$orig.ident)) # set the structure
 names(cluster_count)[1] <- "GSM_ID"
 names(cluster_count)[2] <- "ToRemove"
@@ -481,7 +459,7 @@ for (i in 1:length(cluster_count)) {
 # Draw a heatmap presenting the representation of each sample in each cluster
 library(pheatmap)
 library(RColorBrewer)
-# Create the annotations needed for the heatmap (which needs dataframe structures for annotations)
+# Create the annotations needed for the heatmap
 tmp_df <- data.frame(table(sc_gsm_integrated$orig.ident, sc_gsm_integrated$batch.ident))
 lines_to_manage <- c()
 for (i in 1:length(rownames(tmp_df))) {
@@ -493,12 +471,11 @@ tmp_df <- tmp_df[-lines_to_manage,]
 rownames(tmp_df) <- tmp_df[[1]]
 tmp_df <- tmp_df[, -1]
 colnames(tmp_df) <- c("Batch", "Cell.Count")
-# Then draw the pheatmap
+# Then draw the heatmap and save the values
 p1 <- pheatmap(cluster_count, scale = "column", cluster_rows = F, cluster_cols = F, display_numbers = F, color = colorRampPalette(brewer.pal(n = 11, name = "PRGn"))(100), cellheight = 10, cellwidth = 10, annotation_row = tmp_df)
-# You should save the heatmap from RStudio | 1000 x 535
 write.table(cluster_count, paste(reports_dir, "3_sc_gsm_integrated_SeuratClusters_ClusterCount.csv", sep=""), sep=",") # export "cluster_count" as a table  
 # ------------------------------ #
-# COMPUTE MARKER GENES
+# Computer cluster marker genes
 DefaultAssay(sc_gsm_integrated) <- "SCT"
 sc_cluster_markers <- FindAllMarkers(sc_gsm_integrated, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
 write.table(sc_cluster_markers, paste(reports_dir, "3_sc_gsm_integrated_SeuratClusters_CellTypeMarkers_SCT.csv", sep=""), sep=",")
@@ -508,7 +485,6 @@ p1 %>% ggsave(filename = paste(figure_dir, "3_sc_gsm_integrated_SeuratClusters_H
 p1 <- DotPlot(sc_gsm_integrated, features = make.unique(sc_top_cluster_markers$gene), assay = "SCT", cols = c("green", "red")) + RotatedAxis()
 p1 %>% ggsave(filename = paste(figure_dir, "3_sc_gsm_integrated_SeuratClusters_DotPlot_SCT.png", sep = ""), width = 800, height = 450, units = "mm")
 saveRDS(sc_gsm_integrated, paste(reports_dir, "3_sc_gsm_integrated_backup.rds", sep = ""))
-# sc_gsm_integrated <- readRDS(paste(RData_dir, "3_sc_gsm_integrated_backup.rds", sep = "")) # load gsm_merge backup
 # ------------------------------ #
 # B. For snRNA-seq dataset
 # ------------------------------ #
@@ -518,10 +494,9 @@ p1 <- DimPlot(sn_gsm_integrated, reduction = "umap", group.by = "seurat_clusters
 p2 <- DimPlot(sn_gsm_integrated, reduction = "umap", group.by = "orig.ident", pt.size = 0.1)
 plot_grid(p1, p2, ncol = 2, rel_widths = c(1.05, 1)) %>% ggsave(filename = paste(figure_dir, "3_sn_gsm_integrated_SeuratClusters_res3.png", sep=""), width = 450, height = 150, units = "mm")
 saveRDS(sn_gsm_integrated, paste(RData_dir, "3_sn_gsm_integrated_seuratv4_backup.rds", sep = ""))
-# sn_gsm_integrated <- readRDS(paste(RData_dir, "3_sn_gsm_integrated_seuratv4_backup.rds", sep = "")) # load sn_gsm_integrated backup
 # ------------------------------ #
-# CHECK CLUSTER COMPOSITION
-# Check how much samples are represented in each of the clusters
+# Check cluster composition
+# i.e. how much samples are represented in each cluster
 cluster_count <- as.data.frame(table(subset(sn_gsm_integrated, seurat_clusters == as.character(0))@meta.data$orig.ident)) # set the structure
 names(cluster_count)[1] <- "GSM_ID"
 names(cluster_count)[2] <- "ToRemove"
@@ -545,7 +520,7 @@ for (i in 1:length(cluster_count)) {
 # Draw a heatmap presenting the representation of each sample in each cluster
 library(pheatmap)
 library(RColorBrewer)
-# Create the annotations needed for the heatmap (which needs dataframe structures for annotations)
+# Create the annotations needed for the heatmap
 tmp_df <- data.frame(table(sn_gsm_integrated$orig.ident, sn_gsm_integrated$batch.ident))
 lines_to_manage <- c()
 for (i in 1:length(rownames(tmp_df))) {
@@ -557,12 +532,11 @@ tmp_df <- tmp_df[-lines_to_manage,]
 rownames(tmp_df) <- tmp_df[[1]]
 tmp_df <- tmp_df[, -1]
 colnames(tmp_df) <- c("Batch", "Nucleus.Count")
-# Then draw the pheatmap
+# Then draw the heatmap and save the values
 p1 <- pheatmap(cluster_count, scale = "column", cluster_rows = F, cluster_cols = F, display_numbers = F, color = colorRampPalette(brewer.pal(n = 11, name = "PRGn"))(100), cellheight = 10, cellwidth = 10, annotation_row = tmp_df)
-# You should save the heatmap from RStudio | 1000 x 225
 write.table(cluster_count, paste(reports_dir, "3_sn_gsm_integrated_SeuratClusters_ClusterCount.csv", sep=""), sep=",") # export "cluster_count" as a table  
 # ------------------------------ #
-# COMPUTE MARKER GENES
+# Compute cluster marker genes
 DefaultAssay(sn_gsm_integrated) <- "SCT"
 sn_cluster_markers <- FindAllMarkers(sn_gsm_integrated, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
 write.table(sn_cluster_markers, paste(reports_dir, "3_sn_gsm_integrated_SeuratClusters_CellTypeMarkers_SCT.csv", sep=""), sep=",")
@@ -572,8 +546,8 @@ p1 %>% ggsave(filename = paste(figure_dir, "3_sn_gsm_integrated_SeuratClusters_H
 p1 <- DotPlot(sn_gsm_integrated, features = make.unique(sn_top_cluster_markers$gene), assay = "SCT", cols = c("green", "red")) + RotatedAxis()
 p1 %>% ggsave(filename = paste(figure_dir, "3_sn_gsm_integrated_SeuratClusters_DotPlot_SCT.png", sep = ""), width = 800, height = 450, units = "mm")
 saveRDS(sn_gsm_integrated, paste(reports_dir, "3_sn_gsm_integrated_backup.rds", sep = ""))
-# sn_gsm_integrated <- readRDS(paste(RData_dir, "3_sn_gsm_integrated_backup.rds", sep = "")) # load gsm_merge backup
-rm(sn_gsm_integrated)
+rm(sn_gsm_integrated) # free up RAM
+
 
 # ------------------------------ #
 # IV. CELL TYPE ASSIGNMENT
@@ -582,13 +556,7 @@ rm(sn_gsm_integrated)
 # ------------------------------ #
 sc_gsm_integrated <- readRDS(paste(RData_dir, "3_sc_gsm_integrated_backup.rds", sep = "")) # load sc_gsm_integrated backup
 DefaultAssay(sc_gsm_integrated) <- "SCT"
-# Immune cells 
-VlnPlot(sc_gsm_integrated, group.by = "seurat_clusters", assay = "SCT", features = c("CD3D", "GZMA", "GNLY", "NKG7", "IL7R", "CXCR4", "CD79B", "CD19", "MS4A1", "FCER1A", "CLEC10A", "CD68", "LILRA5", "S100A8", "S100A9"), stack = T, fill.by = "ident")
-# Vascular cells
-VlnPlot(sc_gsm_integrated, group.by = "seurat_clusters", assay = "SCT", features = c("PLVAP", "EMCN", "ENG", "CAV1", "MYH11", "ACTA2", "PDGFRB", "ITGA8", "SMTN", "PODXL", "NPHS2", "WT1"), stack = T, fill.by = "ident")
-# Nephron epithelial cells
-VlnPlot(sc_gsm_integrated, group.by = "seurat_clusters", assay = "SCT", features = c("ATP6V1G3", "FOXI1", "SLC26A4", "INSRR", "SLC4A1", "DMRT2", "FXYD4", "AQP2", "AQP3", "CALB1", "SLC8A1", "SLC12A3", "TRPM6", "KNG1", "UMOD", "SLC12A1", "CLCNKA", "TIMP3", "S100A6", "CUBN", "SLC5A12", "SLC22A6", "ALDOB", "GPX3", "LRP2", "ITGB8", "PIGR", "PROM1"), stack = T, fill.by = "ident")
-# All cells
+# Check the expression of some cell type specific markers in the different clusters
 p1 <- VlnPlot(sc_gsm_integrated, group.by = "seurat_clusters", assay = "SCT", features = c("CD3D", "GZMA", "GNLY", "NKG7", "IL7R", "CXCR4", "CD79B", "CD19", "FCER1A", "CLEC10A", "CD68", "LILRA5", "S100A8", "S100A9", "PLVAP", "EMCN", "ENG", "CAV1", "MYH11", "ACTA2", "PDGFRB", "ITGA8", "SMTN", "PODXL", "NPHS2", "WT1", "ATP6V1G3", "FOXI1", "SLC26A4", "INSRR", "SLC4A1", "DMRT2", "FXYD4", "AQP2", "AQP3", "CALB1", "SLC8A1", "SLC12A3", "TRPM6", "KNG1", "UMOD", "SLC12A1", "CUBN", "SLC5A12", "SLC22A6", "ALDOB", "GPX3", "LRP2", "ITGB8", "PIGR", "PROM1"), stack = T, fill.by = "ident")
 p1 %>% ggsave(filename = paste(figure_dir, "3_sc_gsm_integrated_SeuratClusters_VlnPLot.png", sep=""), width = 550, height = 200, units = "mm")
 # Assign cell types to clusters
@@ -597,15 +565,8 @@ new_cluster_names <- c("PTC.na", "PTC.na", "PTC.S2", "PTC.S3", "PTC.S1", "PTC.S2
 sc_gsm_integrated@meta.data$annot_clusters <- plyr::mapvalues(x = sc_gsm_integrated@meta.data$seurat_clusters, from = old_cluster_names, to = new_cluster_names) # replacing cluster names by cell origins
 sorted_cell_types <- c("Mono.", "Macro.", "Neutro.", "DC", "B.cells", "CD4.T.cells", "CD8.T.cells", "NK.cells", "EC.vei", "EC.glom", "EC.art", "EC.na", "vSMC", "Podo.", "PEC", "PTC.S1", "PTC.S2", "PTC.S3", "PTC.na", "LoH.DTL", "LoH.ATL", "LoH.TAL", "LoH.na", "DCT", "CNT", "PC.CCD", "PC.OMCD", "PC.IMCD", "PC.na", "IC.A", "IC.B", "Trans.cells")
 sc_gsm_integrated$annot_clusters <- factor(x = sc_gsm_integrated$annot_clusters, levels = sorted_cell_types)
-p1 <- DimPlot(sc_gsm_integrated, reduction = "umap", pt.size = 0.1, group.by = "annot_clusters", label = T, repel = T)
-p1 %>% ggsave(filename = paste(figure_dir, "3_sc_gsm_integrated_AnnotClusters_DimPlot.png", sep=""), width = 200, height = 150, units = "mm")
-p1 <- VlnPlot(sc_gsm_integrated, group.by = "annot_clusters", assay = "SCT", features = c("CD3D", "GZMA", "GNLY", "NKG7", "IL7R", "CXCR4", "CD79B", "CD19", "FCER1A", "CLEC10A", "CD68", "LILRA5", "S100A8", "S100A9", "PLVAP", "EMCN", "ENG", "CAV1", "MYH11", "ACTA2", "PDGFRB", "ITGA8", "SMTN", "PODXL", "NPHS2", "WT1", "ATP6V1G3", "FOXI1", "SLC26A4", "INSRR", "SLC4A1", "DMRT2", "FXYD4", "AQP2", "AQP3", "CALB1", "SLC8A1", "SLC12A3", "TRPM6", "KNG1", "UMOD", "SLC12A1", "CUBN", "SLC5A12", "SLC22A6", "ALDOB", "GPX3", "LRP2", "ITGB8", "PIGR", "PROM1"), stack = T, fill.by = "ident")
-p1 %>% ggsave(filename = paste(figure_dir, "3_sc_gsm_integrated_AnnotClusters_VlnPLot.png", sep=""), width = 550, height = 200, units = "mm")
-# Now with other colors and an alpha parameter set
-# colors <- c("brown", "brown1", "coral2", "cornflowerblue", "darkseagreen1", "darkseagreen3", "cyan4", "chocolate1", "firebrick1", "firebrick3", "violetred", "darkmagenta", "goldenrod1", "aquamarine3", "skyblue1", "skyblue3", "grey90", "hotpink3", "hotpink1", "lightpink", "grey90", "grey90", "turquoise3", "yellow3", "olivedrab3", "khaki3", "lemonchiffon4", "palegreen3", "grey90", "plum3", "plum4", "plum1")
 colors <- c("brown1", "brown3", "violetred", "darkgoldenrod", "cornflowerblue", "cyan2", "cyan3", "cyan4", "firebrick3", "firebrick2", "firebrick4", "grey90", "coral", "darkorange", "blueviolet", "darkseagreen2", "darkseagreen3", "darkseagreen4", "grey90", "deepskyblue2", "deepskyblue3", "deepskyblue4", "grey90", "darksalmon", "sandybrown", "rosybrown2", "rosybrown3", "rosybrown4", "grey90", "plum3", "plum4", "plum1")
 p1 <- DimPlot(sc_gsm_integrated, reduction = "umap", pt.size = 0.1, group.by = "annot_clusters", label = T, repel = T, cols = colors)
-p1 %>% ggsave(filename = paste(figure_dir, "3_sc_gsm_integrated_AnnotClusters_DimPlot_Colors_scale.png", sep=""), width = 200, height = 150, units = "mm")
 p1[[1]]$layers[[1]]$aes_params$alpha = 0.2
 p1 %>% ggsave(filename = paste(figure_dir, "3_sc_gsm_integrated_AnnotClusters_DimPlot_Colors.png", sep=""), width = 200, height = 150, units = "mm")
 p1 <- VlnPlot(sc_gsm_integrated, group.by = "annot_clusters", assay = "SCT", features = c("PTPRC", "CD14", "LYZ", "S100A12", "FCN1", "FCGR3A", "CSF3R", "CD68", "FCGR3B", "IL7R", "CLEC10A", "FCER1A", "MS4A1", "CD79A", "CXCR4", "CD3D", "CD69", "CCR7", "GZMA", "GNLY", "CD8A", "TRAC", "NKG7", "EMCN", "ENG", "PLVAP", "EHD3", "PLAT", "TSPAN7", "CAV1", "SOX17", "ACTA2", "PDGFRB", "MYH11", "TAGLN"), stack = T, fill.by = "ident", cols = colors)
@@ -614,8 +575,8 @@ p1 <- VlnPlot(sc_gsm_integrated, group.by = "annot_clusters", assay = "SCT", fea
 p1 %>% ggsave(filename = paste(figure_dir, "3_sc_gsm_integrated_AnnotClusters_VlnPLot_Nephron.png", sep=""), width = 550, height = 200, units = "mm")
 p1 <- VlnPlot(sc_gsm_integrated, group.by = "annot_clusters", assay = "SCT", features = c("PTPRC", "CD14", "LYZ", "S100A12", "FCN1", "FCGR3A", "CSF3R", "CD68", "FCGR3B", "IL7R", "CLEC10A", "FCER1A", "MS4A1", "CD79A", "CXCR4", "CD3D", "CD69", "CCR7", "GZMA", "GNLY", "CD8A", "TRAC", "NKG7", "EMCN", "ENG", "PLVAP", "EHD3", "PLAT", "TSPAN7", "CAV1", "SOX17", "ACTA2", "PDGFRB", "MYH11", "TAGLN", "NPHS2", "PODXL", "CLIC5", "WT1", "CTGF", "PTGDS", "ITGB8", "OCIAD2", "APOE", "SLC5A2", "SLC5A12", "SLC22A6", "SLC22A8", "ACSM2A", "MIOX", "AQP1", "CRYAB", "SPP1", "SLC14A2", "CLDN1", "S100A6", "CLDN3", "CLCNKA", "PROX1", "TACSTD2", "UMOD", "SLC12A1", "DEFB1", "KNG1", "SLC8A1", "SLC12A3", "CALB1", "AQP2", "AQP3", "FXYD4", "ATP6V1G3", "FOXI1", "SLC4A1", "DMRT2", "SLC26A4", "INSRR"), stack = T, fill.by = "ident", cols = colors)
 p1 %>% ggsave(filename = paste(figure_dir, "3_sc_gsm_integrated_AnnotClusters_VlnPLot_AllSubsets.png", sep=""), width = 600, height = 200, units = "mm")
-rm(colors, cols_to_keep, indx, indx005, integration_features, new_cluster_names, old_cluster_names, sorted_cell_types) # free up memory
-# Compute consensus cell type signatures
+rm(colors, cols_to_keep, indx, indx005, integration_features, new_cluster_names, old_cluster_names, sorted_cell_types) # free up RAM
+# Compute consensus kidney cell type signatures (for scRNA-seq)
 Idents(sc_gsm_integrated) <- "annot_clusters"
 sc_annot_markers <- FindAllMarkers(sc_gsm_integrated, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.6)
 write.table(sc_annot_markers, paste(reports_dir, "3_sc_gsm_integrated_AnnotClusters_CellTypeMarkers_SCT.csv", sep=""), sep=",")
@@ -624,41 +585,25 @@ p1 <- DoHeatmap(subset(sc_gsm_integrated, downsample = 200), features = sc_top_a
 p1 %>% ggsave(filename = paste(figure_dir, "3_sc_gsm_integrated_AnnotClusters_Heatmap_SCT.png", sep = ""), width = 500, height = 500, units = "mm")
 p1 <- DotPlot(sc_gsm_integrated, features = make.unique(sc_top_annot_markers$gene), assay = "SCT", cols = c("green", "red")) + RotatedAxis()
 p1 %>% ggsave(filename = paste(figure_dir, "3_sc_gsm_integrated_AnnotClusters_DotPlot_SCT.png", sep = ""), width = 800, height = 450, units = "mm")
-# Save the annotated dataset
-saveRDS(sc_gsm_integrated, paste(reports_dir, "3_sc_gsm_integrated_SeuratAnnot_backup.rds", sep = ""))
-# sc_gsm_integrated <- readRDS(paste(RData_dir, "3_sc_gsm_integrated_SeuratAnnot_backup.rds", sep = "")) # load sc_gsm_integrated backup
+saveRDS(sc_gsm_integrated, paste(reports_dir, "3_sc_gsm_integrated_SeuratAnnot_backup.rds", sep = "")) # save the annotated dataset 
 
 
 # ------------------------------ #
 # B. For snRNA-seq dataset
 # ------------------------------ #
-sn_gsm_integrated <- readRDS(paste(RData_dir, "3_sn_gsm_integrated_backup.rds", sep = "")) # load sn_gsm_integrated backup
+sn_gsm_integrated <- readRDS(paste(RData_dir, "3_sn_gsm_integrated_backup.rds", sep = "")) # reload sn_gsm_integrated
 DefaultAssay(sn_gsm_integrated) <- "SCT"
-# Immune cells 
-VlnPlot(sn_gsm_integrated, group.by = "seurat_clusters", assay = "SCT", features = c("CD3D", "GZMA", "GNLY", "NKG7", "IL7R", "CXCR4", "CD79B", "CD19", "FCER1A", "CLEC10A", "CD68", "LILRA5", "S100A8", "S100A9"), stack = T, fill.by = "ident")
-# Vascular cells
-VlnPlot(sn_gsm_integrated, group.by = "seurat_clusters", assay = "SCT", features = c("PLVAP", "EMCN", "ENG", "CAV1", "MYH11", "ACTA2", "PDGFRB", "ITGA8", "SMTN", "PODXL", "NPHS2", "WT1"), stack = T, fill.by = "ident")
-# Nephron epithelial cells
-VlnPlot(sn_gsm_integrated, group.by = "seurat_clusters", assay = "SCT", features = c("ATP6V1G3", "FOXI1", "SLC26A4", "INSRR", "SLC4A1", "DMRT2", "FXYD4", "AQP2", "AQP3", "CALB1", "SLC8A1", "SLC12A3", "TRPM6", "KNG1", "UMOD", "SLC12A1", "CLCNKA", "TIMP3", "S100A6", "CUBN", "SLC5A12", "SLC22A6", "ALDOB", "GPX3", "LRP2", "ITGB8", "PIGR", "PROM1"), stack = T, fill.by = "ident")
-# All cells
+# Check the expression of some cell type specific markers in the different clusters
 p1 <- VlnPlot(sn_gsm_integrated, group.by = "seurat_clusters", assay = "SCT", features = c("CD3D", "GZMA", "GNLY", "NKG7", "IL7R", "CXCR4", "CD79B", "CD19", "FCER1A", "CLEC10A", "CD68", "LILRA5", "S100A8", "S100A9", "PLVAP", "EMCN", "ENG", "CAV1", "MYH11", "ACTA2", "PDGFRB", "ITGA8", "SMTN", "PODXL", "NPHS2", "WT1", "ATP6V1G3", "FOXI1", "SLC26A4", "INSRR", "SLC4A1", "DMRT2", "FXYD4", "AQP2", "AQP3", "CALB1", "SLC8A1", "SLC12A3", "TRPM6", "KNG1", "UMOD", "SLC12A1", "CUBN", "SLC5A12", "SLC22A6", "ALDOB", "GPX3", "LRP2", "ITGB8", "PIGR", "PROM1"), stack = T, fill.by = "ident")
 p1 %>% ggsave(filename = paste(figure_dir, "3_sn_gsm_integrated_SeuratClusters_VlnPLot.png", sep=""), width = 550, height = 200, units = "mm")
 # Assign cell types to clusters
 old_cluster_names <- c("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50")
-# new_cluster_names <- c("CNT", "LoH.TAL", "DCT", "PTC.diff", "PTC.S3", "PTC.S1", "IC.A", "PTC.S2", "PTC.diff", "DCT", "PC.CNT", "LoH.TAL", "PTC.S2", "PTC.S1", "LoH.TAL", "PC", "DCT", "PTC.S1", "LoH.TAL", "PTC.S3", "PTC.S1", "PTC.diff", "PTC.S3", "rMSC.glom", "IC.A", "DCT", "LoH.TAL", "LoH.TAL", "PC", "LoH.TAL", "PTC.S2", "LoH.diff", "PTC.S1", "DCT", "EC.vei", "Podo.", "EC", "PC", "EC.glom", "PTC.S2", "IC.B", "Podo.", "Fibro.", "IC.B", "LoH.diff", "EC.art", "vSMC", "Pericytes", "Macro.", "LoH.DTL1", "EC")
-# new_cluster_names <- c("CNT", "LoH.TAL", "DCT", "PTC.na", "PTC.na", "PTC.na", "IC.A", "PTC.S3", "PTC.na", "DCT", "CNT", "LoH.TAL", "PTC.S3", "PTC.S2", "LoH.TAL", "PC.IMCD", "DCT", "PTC.S2", "LoH.TAL", "PTC.na", "PTC.S1", "PTC.na", "PTC.na", "EPC", "IC.A", "DCT", "LoH.TAL", "LoH.TAL", "PC.OMCD", "LoH.TAL", "PTC.na", "LoH.ATL", "PTC.S1", "DCT", "EC.vei", "Podo.", "EC", "PC.CCD", "EC.glom", "PTC.na", "IC.B", "Podo.", "Fibro.", "IC.B", "LoH.DTL", "EC.art", "vSMC", "Pericytes", "Macro.", "DCT.na", "EC")
 new_cluster_names <- c("CNT", "LoH.TAL", "DCT", "LoH.na", "PTC.na", "PTC.S2", "IC.A", "PTC.S3", "LoH.DTL", "DCT", "CNT", "LoH.TAL", "PTC.S3", "PTC.S2", "LoH.TAL", "PC.CCD", "DCT", "PTC.S1", "LoH.TAL", "PTC.na", "PTC.S1", "LoH.DTL", "PTC.na", "PEC", "IC.A", "DCT", "LoH.TAL", "LoH.TAL", "PC.OMCD", "LoH.TAL", "PTC.na", "LoH.DTL", "PTC.S1", "DCT", "EC.vei", "Podo.", "EC.vei", "PC.IMCD", "EC.glom", "PTC.na", "IC.B", "Podo.", "Fibro.", "IC.B", "LoH.ATL", "EC.art", "vSMC", "Pericytes", "Macro.", "LoH.na", "EC.na")
 sn_gsm_integrated@meta.data$annot_clusters <- plyr::mapvalues(x = sn_gsm_integrated@meta.data$seurat_clusters, from = old_cluster_names, to = new_cluster_names) # replacing cluster names by cell types
 sorted_cell_types <- c("Macro.", "EC.vei", "EC.glom", "EC.art", "EC.na", "vSMC", "Pericytes", "Fibro.", "Podo.", "PEC", "PTC.S1", "PTC.S2", "PTC.S3", "PTC.na", "LoH.DTL", "LoH.ATL", "LoH.TAL", "LoH.na", "DCT", "CNT", "PC.CCD", "PC.OMCD", "PC.IMCD", "IC.A", "IC.B")
 sn_gsm_integrated$annot_clusters <- factor(x = sn_gsm_integrated$annot_clusters, levels = sorted_cell_types)
-p1 <- DimPlot(sn_gsm_integrated, reduction = "umap", pt.size = 0.1, group.by = "annot_clusters", label = T, repel = T)
-p1 %>% ggsave(filename = paste(figure_dir, "3_sn_gsm_integrated_AnnotClusters_DimPlot.png", sep=""), width = 200, height = 150, units = "mm")
-p1 <- VlnPlot(sn_gsm_integrated, group.by = "annot_clusters", assay = "SCT", features = c("CD3D", "GZMA", "GNLY", "NKG7", "IL7R", "CXCR4", "CD79B", "CD19", "FCER1A", "CLEC10A", "CD68", "LILRA5", "S100A8", "S100A9", "PLVAP", "EMCN", "ENG", "CAV1", "MYH11", "ACTA2", "PDGFRB", "ITGA8", "SMTN", "PODXL", "NPHS2", "WT1", "ATP6V1G3", "FOXI1", "SLC26A4", "INSRR", "SLC4A1", "DMRT2", "FXYD4", "AQP2", "AQP3", "CALB1", "SLC8A1", "SLC12A3", "TRPM6", "KNG1", "UMOD", "SLC12A1", "CUBN", "SLC5A12", "SLC22A6", "ALDOB", "GPX3", "LRP2", "ITGB8", "PIGR", "PROM1"), stack = T, fill.by = "ident")
-p1 %>% ggsave(filename = paste(figure_dir, "3_sn_gsm_integrated_AnnotClusters_VlnPLot.png", sep=""), width = 550, height = 200, units = "mm")
-# Now with other colors and an alpha parameter set
 colors <- c("brown3", "firebrick3", "firebrick2", "firebrick4", "grey90", "coral", "coral2", "coral3", "darkorange", "blueviolet", "darkseagreen2", "darkseagreen3", "darkseagreen4", "grey90", "deepskyblue2", "deepskyblue3", "deepskyblue4", "grey90", "darksalmon", "sandybrown", "rosybrown2", "rosybrown3", "rosybrown4", "plum3", "plum4")
 p1 <- DimPlot(sn_gsm_integrated, reduction = "umap", pt.size = 0.1, group.by = "annot_clusters", label = T, repel = T, cols = colors)
-p1 %>% ggsave(filename = paste(figure_dir, "3_sn_gsm_integrated_AnnotClusters_DimPlot_Colors_scale.png", sep=""), width = 200, height = 150, units = "mm")
 p1[[1]]$layers[[1]]$aes_params$alpha = 0.2
 p1 %>% ggsave(filename = paste(figure_dir, "3_sn_gsm_integrated_AnnotClusters_DimPlot_Colors.png", sep=""), width = 200, height = 150, units = "mm")
 p1 <- VlnPlot(sn_gsm_integrated, group.by = "annot_clusters", assay = "SCT", features = c("ATP6V1G3", "FOXI1", "SLC26A4", "INSRR", "SLC4A1", "DMRT2", "FXYD4", "AQP2", "AQP3", "CALB1", "SLC8A1", "SLC12A3", "TRPM6", "KNG1", "MGP", "CTGF", "UMOD", "SLC12A1", "SLC14A2", "S100A6", "CLCNKA", "CLDN3", "SPP1", "CRYAB", "AQP1", "CUBN", "SLC5A12", "SLC22A6", "ALDOB", "GPX3", "LRP2", "ITGB8", "PIGR", "CD24", "PROM1", "PLVAP", "EMCN", "ENG", "CAV1", "MYH11", "ACTA2", "PDGFRB", "ITGA8", "SMTN", "PODXL", "NPHS2", "WT1", "CD3D", "GZMA", "GNLY", "NKG7", "IL7R", "CXCR4", "CD79B", "CD19", "FCER1A", "CLEC10A", "CD68", "LILRA5", "S100A8", "S100A9"), stack = T, fill.by = "ident", cols = colors)
@@ -669,7 +614,7 @@ p1 <- VlnPlot(sn_gsm_integrated, group.by = "annot_clusters", assay = "SCT", fea
 p1 %>% ggsave(filename = paste(figure_dir, "3_sn_gsm_integrated_AnnotClusters_VlnPLot_Nephron.png", sep=""), width = 550, height = 200, units = "mm")
 p1 <- VlnPlot(sn_gsm_integrated, group.by = "annot_clusters", assay = "SCT", features = c("PTPRC", "CD14", "CD68", "ITGAM", "PECAM1", "FLT1", "EMCN", "ENG", "PLVAP", "EHD3", "PLAT", "TSPAN7", "CAV1", "ACTA2", "PDGFRB", "MYH11", "TAGLN", "EDNRA", "NPHS2", "PODXL", "CLIC5", "WT1", "CTGF", "PTGDS", "ITGB8", "CUBN", "GPX3", "SLC5A2", "SLC5A12", "SLC22A6", "SLC22A8", "HNF4A", "MIOX", "CRYAB", "SPP1", "S100A2", "S100A6", "UMOD", "SLC12A1", "DEFB1", "KNG1", "SLC8A1", "SLC12A3", "CALB1", "AQP2", "AQP3", "FXYD4", "ATP6V1G3", "FOXI1", "SLC4A1", "DMRT2", "SLC26A4", "INSRR"), stack = T, fill.by = "ident", cols = colors)
 p1 %>% ggsave(filename = paste(figure_dir, "3_sn_gsm_integrated_AnnotClusters_VlnPLot_AllSubsets.png", sep=""), width = 500, height = 200, units = "mm")
-# Compute consensus cell type signatures
+# Compute consensus kidney cell type signatures (for snRNA-seq)
 Idents(sn_gsm_integrated) <- "annot_clusters"
 sn_annot_markers <- FindAllMarkers(sn_gsm_integrated, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.6)
 write.table(sn_annot_markers, paste(reports_dir, "3_sn_gsm_integrated_AnnotClusters_CellTypeMarkers_SCT.csv", sep=""), sep=",")
@@ -678,9 +623,7 @@ p1 <- DoHeatmap(subset(sn_gsm_integrated, downsample = 200), features = sn_top_a
 p1 %>% ggsave(filename = paste(figure_dir, "3_sn_gsm_integrated_AnnotClusters_Heatmap_SCT.png", sep = ""), width = 500, height = 500, units = "mm")
 p1 <- DotPlot(sn_gsm_integrated, features = make.unique(sn_top_annot_markers$gene), assay = "SCT", cols = c("green", "red")) + RotatedAxis()
 p1 %>% ggsave(filename = paste(figure_dir, "3_sn_gsm_integrated_AnnotClusters_DotPlot_SCT.png", sep = ""), width = 800, height = 450, units = "mm")
-# Save the annotated dataset
-saveRDS(sn_gsm_integrated, paste(reports_dir, "3_sn_gsm_integrated_SeuratAnnot_backup.rds", sep = ""))
-# sn_gsm_integrated <- readRDS(paste(RData_dir, "3_sn_gsm_integrated_SeuratAnnot_backup.rds", sep = "")) # load sn_gsm_integrated backup
+saveRDS(sn_gsm_integrated, paste(reports_dir, "3_sn_gsm_integrated_SeuratAnnot_backup.rds", sep = "")) # save the annotated dataset 
 
 
 # ------------------------------ #
