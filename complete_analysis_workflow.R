@@ -629,25 +629,20 @@ saveRDS(sn_gsm_integrated, paste(reports_dir, "3_sn_gsm_integrated_SeuratAnnot_b
 # ------------------------------ #
 # V. INTEGRATION OF sc- AND sn-RNAseq
 # ------------------------------ #
-# First, check the batch effect (thus without integration)
+# First, check the level of the batch effects
 scsn_gsm_merge <- merge(sc_gsm_integrated, sn_gsm_integrated)
 rm(sc_gsm_integrated, sn_gsm_integrated) # free up RAM
 DefaultAssay(scsn_gsm_merge) <- "RNA"
 scsn_gsm_merge <- SCTransform(scsn_gsm_merge, method = "glmGamPoi", vars.to.regress = "percent.mt", assay = "RNA", verbose = T)
 DefaultAssay(scsn_gsm_merge) <- "SCT"
-# scsn_gsm_merge <- NormalizeData(scsn_gsm_merge, assay = "RNA", verbose = T)
-# scsn_gsm_merge <- FindVariableFeatures(sc_gsm_merge)
-# scsn_gsm_merge <- ScaleData(sc_gsm_merge, vars.to.regress = "percent.mt")
 scsn_gsm_merge <- RunPCA(scsn_gsm_merge, nmcs = 50, features = VariableFeatures(scsn_gsm_merge), verbose = T)
 p1 <- DimPlot(scsn_gsm_merge, reduction = "pca", group.by = "orig.ident", pt.size = 0.1, raster = F)
 p2 <- VlnPlot(scsn_gsm_merge, features = "PC_1", group.by = "orig.ident", pt.size = 0.1)
 plot_grid(p1, p2, ncol = 2, rel_widths = c(1, 1.5)) %>% ggsave(filename = paste(figure_dir, "5_scsn_merge_check_PCA.png", sep=""), width = 500, height = 150, units = "mm")
-saveRDS(scsn_gsm_merge, paste(RData_dir, "5_scsn_gsm_merge_backup.rds", sep = "")) # save scsn_gsm_merge in a .rds file
-# scsn_gsm_merge <- readRDS(paste(RData_dir, "5_scsn_gsm_merge_backup.rds", sep = "")) # load scsn_gsm_merge backup
+saveRDS(scsn_gsm_merge, paste(RData_dir, "5_scsn_gsm_merge_backup.rds", sep = "")) # save scsn_gsm_merge
 # ------------------------------ #
-# Integrate with Harmony for the sake of comparison
+# Integrate with Harmony for comparison with Seurat v4
 library(harmony)
-# Integrating using Harmony
 DefaultAssay(scsn_gsm_merge) <- "SCT"
 scsn_gsm_merge <- RunHarmony(scsn_gsm_merge, group.by.vars = "orig.ident", project.dim = F, plot_convergence = T, verbose = T, assay.use = "SCT")
 p1 <- DimPlot(scsn_gsm_merge, reduction = "harmony", group.by = "orig.ident", pt.size = 0.1, raster = F)
@@ -665,11 +660,9 @@ p1 %>% ggsave(filename = paste(figure_dir, "5_scsn_gsm_integrated_check_harmony_
 p1 <- DimPlot(scsn_gsm_merge, reduction = "umap", group.by = "batch.ident", label = F, pt.size = 0.1, raster = F)
 p1[[1]]$layers[[1]]$aes_params$alpha = 0.2
 p1 %>% ggsave(filename = paste(figure_dir, "5_scsn_gsm_integrated_check_harmony_BatchIdent.png", sep=""), width = 150, height = 130, units = "mm")
-# save scsn_gsm_merge before clustering
-saveRDS(scsn_gsm_merge, paste(RData_dir, "5_scsn_gsm_integrated_harmony_backup.rds", sep = ""))
-# scsn_gsm_merge <- readRDS(paste(RData_dir, "5_scsn_gsm_integrated_harmony_backup.rds", sep = "")) # load scsn_gsm_merge backup
-rm(scsn_gsm_merge)
-# Preparation
+saveRDS(scsn_gsm_merge, paste(RData_dir, "5_scsn_gsm_integrated_harmony_backup.rds", sep = "")) # save scsn_gsm_merge
+rm(scsn_gsm_merge) # free up RAM
+# Normalisation step
 sc_gsm_integrated <- readRDS(paste(RData_dir, "3_sc_gsm_integrated_SeuratAnnot_backup.rds", sep = ""))
 sn_gsm_integrated <- readRDS(paste(RData_dir, "3_sn_gsm_integrated_SeuratAnnot_backup.rds", sep = ""))
 scsn_list <- merge(sc_gsm_integrated, sn_gsm_integrated)
@@ -681,14 +674,14 @@ for (i in 1:length(scsn_list)) {
   DefaultAssay(scsn_list[[i]]) <- "SCT"
   scsn_list[[i]] <- RunPCA(scsn_list[[i]], features = VariableFeatures(scsn_list[[i]]), assay = "SCT", npcs = 50, verbose = T)
 }
+# Integration step
 integration_features <- SelectIntegrationFeatures(object.list = scsn_list, nfeatures = 2500)
 scsn_integrated <- PrepSCTIntegration(object.list = scsn_list, anchor.features = integration_features)
 rm(scsn_list)
 scsn_anchors <- FindIntegrationAnchors(object.list = scsn_integrated, normalization.method = "SCT", anchor.features = integration_features, reduction = "rpca")
 scsn_integrated <- IntegrateData(anchorset = scsn_anchors, normalization.method = "SCT", new.assay.name = "scsn.integration", verbose = T)
 DefaultAssay(scsn_integrated) <- "scsn.integration"
-saveRDS(scsn_integrated, paste(RData_dir, "5_scsn_integrated_backup.rds", sep = ""))
-# scsn_integrated <- readRDS(paste(RData_dir, "5_scsn_integrated_backup.rds", sep = ""))
+saveRDS(scsn_integrated, paste(RData_dir, "5_scsn_integrated_backup.rds", sep = "")) # save scsn_integrated
 rm(scsn_anchors)
 # Run dimensional reductions
 scsn_integrated <- RunPCA(scsn_integrated, features = VariableFeatures(scsn_integrated@assays$scsn.integration), assay = "scsn.integration", npcs = 50, verbose = T)
@@ -701,19 +694,17 @@ p2 <- DimPlot(scsn_integrated, reduction = "umap", group.by = "batch.ident", lab
 plot_grid(p1, p2, ncol = 2, rel_widths = c(1.2, 1)) %>% ggsave(filename = paste(figure_dir, "5_scsn_integrated_batch_vs_sample_ident.png", sep=""), width = 450, height = 150, units = "mm")
 p2 <- DimPlot(scsn_integrated, reduction = "umap", group.by = "techno.ident", label = F, pt.size = 0.1, raster = F) # check also batch integration
 plot_grid(p1, p2, ncol = 2, rel_widths = c(1.2, 1)) %>% ggsave(filename = paste(figure_dir, "5_scsn_integrated_techno_vs_sample_ident.png", sep=""), width = 450, height = 150, units = "mm")
-# Finally, check the correction of the batch effect (thus after integration)
+# Finally, check the correction of the batch effects
 p1 <- DimPlot(scsn_integrated, reduction = "pca", group.by = "orig.ident", pt.size = 0.1, raster = F)
 p2 <- VlnPlot(scsn_integrated, features = "PC_1", group.by = "orig.ident", pt.size = 0.1)
 plot_grid(p1, p2, ncol = 2, rel_widths = c(1, 1.5)) %>% ggsave(filename = paste(figure_dir, "5_scsn_integrated_check_PCA.png", sep=""), width = 500, height = 150, units = "mm")
-# Save scsn_integrated before clustering
-saveRDS(scsn_integrated, paste(RData_dir, "5_scsn_integrated_backup2.rds", sep = ""))
-# scsn_integrated <- readRDS(paste(RData_dir, "5_scsn_integrated_backup2.rds", sep = ""))
+saveRDS(scsn_integrated, paste(RData_dir, "5_scsn_integrated_backup2.rds", sep = "")) # save scsn_integrated
 # Finally, plot "annot_clusters" depending on techno.ident
 sorted_cell_types <- c("Mono.", "Macro.", "Neutro.", "DC", "B.cells", "CD4.T.cells", "CD8.T.cells", "NK.cells", "EC.vei", "EC.glom", "EC.art", "EC.na", "vSMC", "Pericytes", "Fibro.", "Podo.", "PEC", "PTC.S1", "PTC.S2", "PTC.S3", "PTC.na", "LoH.DTL", "LoH.ATL", "LoH.TAL", "LoH.na", "DCT", "CNT", "PC.CCD", "PC.OMCD", "PC.IMCD", "PC.na", "IC.A", "IC.B", "Trans.cells")
 scsn_integrated$annot_clusters <- factor(x = scsn_integrated$annot_clusters, levels = sorted_cell_types)
 colors <- c("brown1", "brown3", "violetred", "darkgoldenrod", "cornflowerblue", "cyan2", "cyan3", "cyan4", "firebrick3", "firebrick2", "firebrick4", "grey90", "coral", "coral2", "coral3", "darkorange", "blueviolet", "darkseagreen2", "darkseagreen3", "darkseagreen4", "grey90", "deepskyblue2", "deepskyblue3", "deepskyblue4", "grey90", "darksalmon", "sandybrown", "rosybrown2", "rosybrown3", "rosybrown4", "grey90", "plum3", "plum4", "plum1")
 p1 <- DimPlot(scsn_integrated, group.by = "annot_clusters", reduction = "umap", pt.size = 0.1, label = T, repel = T, raster = F, cols = colors)
-p1 %>% ggsave(filename = paste(figure_dir, "5_scsn_integrated_AnnotClusters_DimPlot_colors.png", sep=""), width = 200, height = 150, units = "mm")
+p1 %>% ggsave(filename = paste(figure_dir, "5_scsn_integrated_AnnotClusters_DimPlot.png", sep=""), width = 200, height = 150, units = "mm")
 p1 <- DimPlot(scsn_integrated, group.by = "annot_clusters", reduction = "umap", pt.size = 0.1, label = T, repel = T, raster = F)
 p1[[1]]$layers[[1]]$aes_params$alpha = 0.2
 p2 <- DimPlot(scsn_integrated, reduction = "umap", group.by = "batch.ident", label = F, pt.size = 0.1, raster = F)
@@ -723,10 +714,8 @@ p2 <- DimPlot(scsn_integrated, group.by = "techno.ident", reduction = "umap", pt
 p2[[1]]$layers[[1]]$aes_params$alpha = 0.2
 plot_grid(p1, p2, ncol = 2, rel_widths = c(1.1, 1)) %>% ggsave(filename = paste(figure_dir, "5_scsn_integrated_AnnotClusters_vs_TechnoIdent.png", sep=""), width = 400, height = 150, units = "mm")
 p1 <- DimPlot(scsn_integrated, group.by = "annot_clusters", split.by = "techno.ident", reduction = "umap", pt.size = 0.1, label = T, repel = T, raster = F, cols = colors)
-p1 %>% ggsave(filename = paste(figure_dir, "5_scsn_integrated_AnnotClusters_SplitByTechnoIdent_scale.png", sep=""), width = 300, height = 150, units = "mm")
 p1[[1]]$layers[[1]]$aes_params$alpha = 0.2
-p1 %>% ggsave(filename = paste(figure_dir, "5_scsn_integrated_AnnotClusters_SplitByTechnoIdent_colors.png", sep=""), width = 300, height = 150, units = "mm")
-saveRDS(scsn_integrated, paste(RData_dir, "5_scsn_integrated_backup3.rds", sep = ""))
+p1 %>% ggsave(filename = paste(figure_dir, "5_scsn_integrated_AnnotClusters_SplitByTechnoIdent.png", sep=""), width = 300, height = 150, units = "mm")
 
 
 # ------------------------------ #
