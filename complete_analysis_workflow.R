@@ -180,7 +180,7 @@ sn_gsm_names <- c("GSM3823939", "GSM3823940", "GSM3823941", "GSM3320197-8", "GSM
 
 
 # ------------------------------ #
-# PRE-PROCESSING
+# I. DATA PREPARATION
 # ------------------------------ #
 # A. For scRNA-seq dataset
 # ------------------------------ #
@@ -586,8 +586,6 @@ p1 %>% ggsave(filename = paste(figure_dir, "3_sc_gsm_integrated_AnnotClusters_He
 p1 <- DotPlot(sc_gsm_integrated, features = make.unique(sc_top_annot_markers$gene), assay = "SCT", cols = c("green", "red")) + RotatedAxis()
 p1 %>% ggsave(filename = paste(figure_dir, "3_sc_gsm_integrated_AnnotClusters_DotPlot_SCT.png", sep = ""), width = 800, height = 450, units = "mm")
 saveRDS(sc_gsm_integrated, paste(reports_dir, "3_sc_gsm_integrated_SeuratAnnot_backup.rds", sep = "")) # save the annotated dataset 
-
-
 # ------------------------------ #
 # B. For snRNA-seq dataset
 # ------------------------------ #
@@ -629,7 +627,7 @@ saveRDS(sn_gsm_integrated, paste(reports_dir, "3_sn_gsm_integrated_SeuratAnnot_b
 # ------------------------------ #
 # V. INTEGRATION OF sc- AND sn-RNAseq
 # ------------------------------ #
-# First, check the level of the batch effects
+# Check the level of the batch effects
 scsn_gsm_merge <- merge(sc_gsm_integrated, sn_gsm_integrated)
 rm(sc_gsm_integrated, sn_gsm_integrated) # free up RAM
 DefaultAssay(scsn_gsm_merge) <- "RNA"
@@ -641,7 +639,7 @@ p2 <- VlnPlot(scsn_gsm_merge, features = "PC_1", group.by = "orig.ident", pt.siz
 plot_grid(p1, p2, ncol = 2, rel_widths = c(1, 1.5)) %>% ggsave(filename = paste(figure_dir, "5_scsn_merge_check_PCA.png", sep=""), width = 500, height = 150, units = "mm")
 saveRDS(scsn_gsm_merge, paste(RData_dir, "5_scsn_gsm_merge_backup.rds", sep = "")) # save scsn_gsm_merge
 # ------------------------------ #
-# Integrate with Harmony for comparison with Seurat v4
+# First, integrate with Harmony for comparison with Seurat v4
 library(harmony)
 DefaultAssay(scsn_gsm_merge) <- "SCT"
 scsn_gsm_merge <- RunHarmony(scsn_gsm_merge, group.by.vars = "orig.ident", project.dim = F, plot_convergence = T, verbose = T, assay.use = "SCT")
@@ -662,6 +660,8 @@ p1[[1]]$layers[[1]]$aes_params$alpha = 0.2
 p1 %>% ggsave(filename = paste(figure_dir, "5_scsn_gsm_integrated_check_harmony_BatchIdent.png", sep=""), width = 150, height = 130, units = "mm")
 saveRDS(scsn_gsm_merge, paste(RData_dir, "5_scsn_gsm_integrated_harmony_backup.rds", sep = "")) # save scsn_gsm_merge
 rm(scsn_gsm_merge) # free up RAM
+# ------------------------------ #
+# Then, integrate with Seurat v4
 # Normalisation step
 sc_gsm_integrated <- readRDS(paste(RData_dir, "3_sc_gsm_integrated_SeuratAnnot_backup.rds", sep = ""))
 sn_gsm_integrated <- readRDS(paste(RData_dir, "3_sn_gsm_integrated_SeuratAnnot_backup.rds", sep = ""))
@@ -699,7 +699,7 @@ p1 <- DimPlot(scsn_integrated, reduction = "pca", group.by = "orig.ident", pt.si
 p2 <- VlnPlot(scsn_integrated, features = "PC_1", group.by = "orig.ident", pt.size = 0.1)
 plot_grid(p1, p2, ncol = 2, rel_widths = c(1, 1.5)) %>% ggsave(filename = paste(figure_dir, "5_scsn_integrated_check_PCA.png", sep=""), width = 500, height = 150, units = "mm")
 saveRDS(scsn_integrated, paste(RData_dir, "5_scsn_integrated_backup2.rds", sep = "")) # save scsn_integrated
-# Finally, plot "annot_clusters" depending on techno.ident
+# Interesting plots
 sorted_cell_types <- c("Mono.", "Macro.", "Neutro.", "DC", "B.cells", "CD4.T.cells", "CD8.T.cells", "NK.cells", "EC.vei", "EC.glom", "EC.art", "EC.na", "vSMC", "Pericytes", "Fibro.", "Podo.", "PEC", "PTC.S1", "PTC.S2", "PTC.S3", "PTC.na", "LoH.DTL", "LoH.ATL", "LoH.TAL", "LoH.na", "DCT", "CNT", "PC.CCD", "PC.OMCD", "PC.IMCD", "PC.na", "IC.A", "IC.B", "Trans.cells")
 scsn_integrated$annot_clusters <- factor(x = scsn_integrated$annot_clusters, levels = sorted_cell_types)
 colors <- c("brown1", "brown3", "violetred", "darkgoldenrod", "cornflowerblue", "cyan2", "cyan3", "cyan4", "firebrick3", "firebrick2", "firebrick4", "grey90", "coral", "coral2", "coral3", "darkorange", "blueviolet", "darkseagreen2", "darkseagreen3", "darkseagreen4", "grey90", "deepskyblue2", "deepskyblue3", "deepskyblue4", "grey90", "darksalmon", "sandybrown", "rosybrown2", "rosybrown3", "rosybrown4", "grey90", "plum3", "plum4", "plum1")
@@ -721,78 +721,8 @@ p1 %>% ggsave(filename = paste(figure_dir, "5_scsn_integrated_AnnotClusters_Spli
 # ------------------------------ #
 # VI. TESTING THE SIGNATURES IN CELL TYPE ASSIGNMENT
 # ------------------------------ #
-library(CelliD)
-set.seed(1)
-# ------------------------------ #
 # A. For scRNA-seq dataset
 # ------------------------------ #
-# I. Using a non-annotated dataset 
-# ------------------------------ #
-# First, load the query dataset (that must contain metadata with the labels from authors)
-gsm4630027 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE152936/GSM4630027_pRCC/")
-gsm4630028 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE152936/GSM4630028_ccRCC1/")
-gsm4630029 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE152936/GSM4630029_ccRCC2/")
-gsm4630030 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE152936/GSM4630030_chRCC/")
-gsm4630031 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE152936/GSM4630031_Normal/")
-gsm4630027 <- CreateSeuratObject(gsm4630027, project = "gsm4630027", min.cells = 10, min.features = 200)
-gsm4630028 <- CreateSeuratObject(gsm4630028, project = "gsm4630028", min.cells = 10, min.features = 200)
-gsm4630029 <- CreateSeuratObject(gsm4630029, project = "gsm4630029", min.cells = 10, min.features = 200)
-gsm4630030 <- CreateSeuratObject(gsm4630030, project = "gsm4630030", min.cells = 10, min.features = 200)
-gsm4630031 <- CreateSeuratObject(gsm4630031, project = "gsm4630031", min.cells = 10, min.features = 200)
-# QC filtering
-gse152938 <- merge(gsm4630031, y = c(gsm4630027, gsm4630028, gsm4630029, gsm4630030))
-gse152938[["percent.mt"]] <- PercentageFeatureSet(gse152938, pattern = "^MT-")
-gse152938 <- subset(gse152938, subset = nFeature_RNA > 200 & nFeature_RNA < 3500 & percent.mt < 30)
-# Then process the data with normalization, scaling (using SCTransform) and dimension reductions
-DefaultAssay(gse152938) <- "RNA"
-gse152938 <- SplitObject(gse152938, split.by = "orig.ident")
-for (i in 1:length(gse152938)) {
-  gse152938[[i]] <- SCTransform(gse152938[[i]], method = "glmGamPoi", vars.to.regress = "percent.mt", verbose = T)
-  DefaultAssay(gse152938[[i]]) <- "SCT"
-}
-integration_features <- SelectIntegrationFeatures(object.list = gse152938, nfeatures = 2500)
-gse152938 <- PrepSCTIntegration(object.list = gse152938, anchor.features = integration_features)
-gse152938_anchors <- FindIntegrationAnchors(object.list = gse152938, normalization.method = "SCT", anchor.features = integration_features) # reduction = "rpca"
-saveRDS(gse152938_anchors, paste(RData_dir, "6_sc_gse152938_anchors_backup.rds", sep = ""))
-# gse152938_anchors <- readRDS(paste(RData_dir, "6_sn_gse152938_anchors_backup.rds", sep = ""))
-rm(gse152938, gsm4630027, gsm4630028, gsm4630029, gsm4630030, gsm4630031)
-gse152938_integrated <- IntegrateData(anchorset = gse152938_anchors, normalization.method = "SCT", new.assay.name = "seurat.integration")
-rm(gse152938_anchors)
-saveRDS(gse152938_integrated, paste(RData_dir, "6_sc_gse152938_integrated_backup.rds", sep = "")) 
-# gse152938_integrated <- readRDS(paste(RData_dir, "6_sc_gse152938_integrated_backup.rds", sep = ""))
-gse152938_integrated <- RunMCA(gse152938_integrated, nmcs = 50, features = VariableFeatures(object = gse152938_integrated), assay = "SCT", verbose = T) # assay = "RNA"
-# Switch back to the "seurat.integration" assay as default, to compute every next step with this assay
-DefaultAssay(gse152938_integrated) <- "seurat.integration"
-gse152938_integrated <- RunPCA(gse152938_integrated, features = VariableFeatures(gse152938_integrated@assays$seurat.integration), assay = "seurat.integration", npcs = 50, verbose = T)
-gse152938_integrated <- RunUMAP(gse152938_integrated, reduction = "pca", dims = 1:30, verbose = T)
-DimPlot(gse152938_integrated, reduction = "umap", group.by = "orig.ident", label = T, repel = T, pt.size = 0.1)
-# Save again gse152938_integrated once everything is ok
-saveRDS(gse152938_integrated, paste(RData_dir, "6_sc_gse152938_integrated_backup.rds", sep = "")) 
-# gse152938_integrated <- readRDS(paste(RData_dir, "6_sc_gse152938_integrated_backup.rds", sep = ""))
-# Now try to identify cell types, based on the consensus signatures
-library(CelliD)
-set.seed(1)
-# Setting the signature of cell types as a list; signatures are extracted from Stewart BJ., et al. Science. 2019 --- PMID 31604275
-signatures <- as.list(read.table("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/external/220302_signatures_p2_scrnaseq.csv", header = T, sep = ";", fill = TRUE))
-DefaultAssay(gse152938_integrated) <- "SCT"
-# Perform HGT-based enrichment to identify cell types
-log10_pval_matrix_is <- RunCellHGT(gse152938_integrated, reduction = "mca", pathways = signatures, dims = 1:50, log.trans = T, n.features = 500, minSize = 10)
-# Predict cell type based on signatures
-prediction <- rownames(log10_pval_matrix_is)[apply(log10_pval_matrix_is, 2, FUN = which.max)]
-# Remove low p-value predictions > 0.01
-prediction <- ifelse(apply(log10_pval_matrix_is, 2, FUN = max) > 2, prediction, "unassigned") # this is the step where it's possible to play with p-val threshold, even if it's not adviced
-# Store the prediction as metadata of the Seurat object
-gse152938_integrated@meta.data$PredHGT.p2 <- prediction
-gse152938_integrated@assays[["PredHGT.p2"]] <- CreateAssayObject(data = log10_pval_matrix_is)
-# Then plot predicted cell types
-p1 <- DimPlot(gse152938_integrated, reduction = "umap", group.by = "PredHGT.p2", label = T, repel = T, pt.size = 0.1)
-saveRDS(gse152938_integrated, paste(RData_dir, "6_sc_gse152938_integrated_PredHGT_backup.rds", sep = "")) 
-
-
-# ------------------------------ #
-# I. Using an annotated dataset 
-# ------------------------------ #
-library(CelliD)
 # First, load the query dataset (that must contain metadata with the labels from authors)
 # Kuppe C, et al. Decoding myofibroblast origins in human kidney fibrosis. Nature. 2021 Jan;589(7841):281-286. | PMID  33176333 | zenodo 4059315
 cd10_neg <- ReadMtx(mtx = "/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/zenodo4059315/CD10_neg/kidneyMap_UMI_counts.mtx", 
@@ -809,92 +739,69 @@ cd10_pos <- ReadMtx(mtx = "/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/ra
                     feature.column = 1, skip.feature = 1)
 metadata <- read.csv("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/zenodo4059315/CD10_pos/cd10pos_metadata.csv", sep = ";")
 cd10_pos <- CreateSeuratObject(cd10_pos, project = "CD10+", min.cells = 10, min.features = 200, meta.data = metadata) 
-zenodo4059315 <- merge(cd10_neg, cd10_pos) # kidney full dataset is reconstructed
-rm(cd10_neg, cd10_pos)
-# ------------------------------ #
-# PROCESS DATA
-# First add some metadata
+zenodo4059315 <- merge(cd10_neg, cd10_pos) # full kidney dataset is now reconstructed
+rm(cd10_neg, cd10_pos) # free up RAM
+# First, add some metadata and filter cells according to QC thresholds
 zenodo4059315[["percent.mt"]] <- PercentageFeatureSet(zenodo4059315, pattern = "^MT-")
 zenodo4059315 <- subset(zenodo4059315, subset = nFeature_RNA > 200 & nFeature_RNA < 3500 & percent.mt < 30)
-# Then process the data with normalization, scaling (using SCTransform) and dimension reductions
+# Normalisation step
 DefaultAssay(zenodo4059315) <- "RNA"
 zenodo4059315 <- SplitObject(zenodo4059315, split.by = "Patient.ID")
 for (i in 1:length(zenodo4059315)) {
   zenodo4059315[[i]] <- SCTransform(zenodo4059315[[i]], method = "glmGamPoi", vars.to.regress = "percent.mt", verbose = T)
   DefaultAssay(zenodo4059315[[i]]) <- "SCT"
 }
-# Filter out samples that contain less than 100 cells
-# tmp_ls <- c()
-# for (i in 1:length(zenodo4059315)) {
-#   if (length(colnames(zenodo4059315[[i]])) < 100) {
-#     tmp_ls <- c(tmp_ls, i)
-#   }
-# }
-# zenodo4059315 <- zenodo4059315[-tmp_ls]
-# Now we can run the PCA on every remaining sample (samples with > 100 cells)
-# for (i in 1:length(zenodo4059315)) {
-#   zenodo4059315[[i]] <- RunPCA(zenodo4059315[[i]], features = VariableFeatures(zenodo4059315[[i]]), assay = "SCT", npcs = 50, verbose = T)
-# }
+# Integration step
 integration_features <- SelectIntegrationFeatures(object.list = zenodo4059315, nfeatures = 2500)
 zenodo4059315 <- PrepSCTIntegration(object.list = zenodo4059315, anchor.features = integration_features)
 zenodo4059315_anchors <- FindIntegrationAnchors(object.list = zenodo4059315, normalization.method = "SCT", anchor.features = integration_features) # reduction = "rpca"
-saveRDS(zenodo4059315_anchors, paste(RData_dir, "6_sc_zenodo4059315_anchors_backup.rds", sep = ""))
-# zenodo4059315_anchors <- readRDS(paste(RData_dir, "6_sc_zenodo4059315_anchors_backup.rds", sep = ""))
-rm(zenodo4059315)
+rm(zenodo4059315) # free up RAM
 zenodo4059315_integrated <- IntegrateData(anchorset = zenodo4059315_anchors, normalization.method = "SCT", new.assay.name = "seurat.integration")
-rm(zenodo4059315_anchors)
-saveRDS(zenodo4059315_integrated, paste(RData_dir, "6_sc_zenodo4059315_integrated_backup.rds", sep = "")) 
-# zenodo4059315_integrated <- readRDS(paste(RData_dir, "6_sc_zenodo4059315_integrated_backup.rds", sep = ""))
-zenodo4059315_integrated <- RunMCA(zenodo4059315_integrated, nmcs = 50, features = VariableFeatures(object = zenodo4059315_integrated), assay = "SCT", verbose = T) # assay = "RNA"
-# Switch back to the "seurat.integration" assay as default, to compute every next step with this assay
+rm(zenodo4059315_anchors) # free up RAM
+saveRDS(zenodo4059315_integrated, paste(RData_dir, "6_sc_zenodo4059315_integrated_backup.rds", sep = "")) # save the integrated dataset
+# Run dimensional reductions
+zenodo4059315_integrated <- RunMCA(zenodo4059315_integrated, nmcs = 50, features = VariableFeatures(object = zenodo4059315_integrated), assay = "SCT", verbose = T)
 DefaultAssay(zenodo4059315_integrated) <- "seurat.integration"
 zenodo4059315_integrated <- RunPCA(zenodo4059315_integrated, features = VariableFeatures(zenodo4059315_integrated@assays$seurat.integration), assay = "seurat.integration", npcs = 50, verbose = T)
 zenodo4059315_integrated <- RunUMAP(zenodo4059315_integrated, reduction = "pca", dims = 1:30, verbose = T)
 zenodo4059315_integrated <- RunTSNE(zenodo4059315_integrated, reduction = "pca", dims = 1:30, verbose = T)
 zenodo4059315_integrated <- RunMCUMAP(zenodo4059315_integrated, reduction = "mca", dims = 1:30, verbose = T)
 DimPlot(zenodo4059315_integrated, reduction = "mcumap", group.by = "Annotation.3", label = T, repel = T, pt.size = 0.1)
-# Retrieve labeled clusters from the Kuppe C, et al.
+# Retrieve labeled clusters from Kuppe C, et al., and adapt to the nomenclature of the consensus signatures
 old_cluster_names <- c("Arteriolar Endothelium", "B Cells", "Collecting Duct Principal Cells", "Connecting Tubule", "Dendritic Cells", "Descending Thin Limb", "Distal Convoluted Tubule", "Fibroblast 2", "Fibroblast 4", "Fibroblast 6", "Glomerular Capillaries", "Injured Endothelial Cells", "Injured Proximal tubule", "Intercalated Cells 3", "Intercalated Cells 4", "Intercalated Cells 5", "Intercalated Cells 6", "Intercalated Cells 7", "Intercalated Cells 8", "Intercalated Cells A", "Intercalated Cells B", "Lymph Endothelium", "Macrophages 1", "Macrophages 2", "Macrophages 3", "Macula Densa Cells", "Mast Cells", "Monocytes", "Myofibroblast 1a", "Myofibroblast 1b", "Natural Killer Cells", "Pericytes 1", "Pericytes 2", "Plasma Cells", "Podocytes", "Proximal Tubule", "S1", "S1/2 1", "S1/2 2", "S1/2 3", "S3 1", "S3 2", "S3 3", "Schwann Cells", "T Cells", "Thick Ascending Limb 2", "Thick Ascending Limb 3", "Thick Ascending Limb 4", "Uroethlial Cells", "Vasa Recta 1", "Vasa Recta 2", "Vasa Recta 3", "Vasa Recta 4", "Vasa Recta 5", "Vasa Recta 6", "Vascular Smooth Muscle Cells", "Venular Endothelium")
 new_cluster_names <- c("EC.art", "B.cells", "PC.CCD", "CNT", "DC", "LoH.DTL", "DCT", "Fibro.", "Fibro.", "Fibro.", "EC.glom", "EC.na", "PTC.na", "IC.na", "IC.na", "IC.na", "IC.na", "IC.na", "IC.na", "IC.A", "IC.B", "EC.lym", "Macro.", "Macro.", "Macro.", "MD.cells", "Mast.cells", "Mono.", "Myofibro.", "Myofibro.", "NK.cells", "Pericytes", "Pericytes", "Plasma.cells", "Podo.", "PTC.na", "PTC.S1", "PTC.S2", "PTC.S2", "PTC.S2", "PTC.S3", "PTC.S3", "PTC.S3", "Schwann.cells", "T.cells", "LoH.TAL", "LoH.TAL", "LoH.TAL", "Uro.", "EC.vasa.recta", "EC.vasa.recta", "EC.vasa.recta", "EC.vasa.recta", "EC.vasa.recta", "EC.vasa.recta", "vSMC", "EC.vei")
 zenodo4059315_integrated@meta.data$annot_clusters <- plyr::mapvalues(x = zenodo4059315_integrated@meta.data$Annotation.3, from = old_cluster_names, to = new_cluster_names) # replacing cluster names by cell types
 sorted_cell_types <- c("Mono.", "Macro.", "Mast.cells", "DC", "B.cells", "T.cells", "NK.cells", "Plasma.cells", "EC.vei", "EC.glom", "EC.art", "EC.lym", "EC.vasa.recta", "EC.na", "vSMC", "Pericytes", "Fibro.", "Myofibro.", "Podo.", "MD.cells", "PTC.S1", "PTC.S2", "PTC.S3", "PTC.na", "LoH.DTL", "LoH.TAL", "DCT", "CNT", "PC.CCD", "IC.A", "IC.B", "IC.na", "Schwann.cells", "Uro.")
 zenodo4059315_integrated$annot_clusters <- factor(x = zenodo4059315_integrated$annot_clusters, levels = sorted_cell_types)
-DimPlot(zenodo4059315_integrated, reduction = "mcumap", group.by = "annot_clusters", label = T, repel = T, pt.size = 0.1)
 colors = c("brown1", "brown3", "green", "darkgoldenrod", "cornflowerblue", "cyan2", "cyan4", "cornflowerblue", "firebrick3", "firebrick2", "firebrick4", "yellow", "firebrick1", "grey90", "coral", "coral2", "coral3", "coral4", "darkorange", "pink", "darkseagreen2", "darkseagreen3", "darkseagreen4", "grey90", "deepskyblue2", "deepskyblue4", "darksalmon", "sandybrown", "rosybrown2", "plum3", "plum4", "grey90", "orange", "magenta")
 p1 <- DimPlot(zenodo4059315_integrated, reduction = "mcumap", group.by = "annot_clusters", pt.size = 0.1, label = T, repel = T, cols = colors) + ggtitle("Kuppe C, et al. labeling") # display the profile of the integrated dataset
-p1 %>% ggsave(filename = paste(figure_dir, "6_sc_zenodo4059315_integrated_AnnotClusters_DimPlot_colors.png", sep=""), width = 200, height = 150, units = "mm")
 p1[[1]]$layers[[1]]$aes_params$alpha = 0.5
-p2 <- DimPlot(zenodo4059315_integrated, reduction = "mcumap", group.by = "Patient.ID", label = F, pt.size = 0.1) + ggtitle("Samples") # check also batch integration
+p2 <- DimPlot(zenodo4059315_integrated, reduction = "mcumap", group.by = "Patient.ID", label = F, pt.size = 0.1) + ggtitle("Samples")
 plot_grid(p1, p2, ncol = 2, rel_widths = c(1, 1.1)) %>% ggsave(filename = paste(figure_dir, "6_sc_zenodo4059315_integrated_AnnotClusters_vs_OrigIdent.png", sep=""), width = 450, height = 150, units = "mm")
-# Save again zenodo4059315_integrated once everything is ok
-saveRDS(zenodo4059315_integrated, paste(RData_dir, "6_sc_zenodo4059315_integrated_backup.rds", sep = "")) 
-# zenodo4059315_integrated <- readRDS(paste(RData_dir, "6_sc_zenodo4059315_integrated_backup.rds", sep = ""))
-# Now try to identify cell types, based on the consensus signatures
+saveRDS(zenodo4059315_integrated, paste(RData_dir, "6_sc_zenodo4059315_integrated_backup.rds", sep = "")) # save zenodo4059315_integrated
+# ------------------------------ #
+# Perform single-cell enrichment of consensus signatures (using scRNA-seq signatures)
 library(CelliD)
 set.seed(1) 
 # Setting the signature of cell types as a list
 signatures <- as.list(read.table("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/external/220317_p2_signatures_scrnaseq.csv", header = T, sep = ";", fill = TRUE))
 DefaultAssay(zenodo4059315_integrated) <- "SCT"
-# Perform HGT-based enrichment to identify cell types
+# Perform enrichment
 log10_pval_matrix_is <- RunCellHGT(zenodo4059315_integrated, reduction = "mca", pathways = signatures, dims = 1:50, log.trans = T, n.features = 500, minSize = 10)
-# Predict cell type based on signatures
-prediction <- rownames(log10_pval_matrix_is)[apply(log10_pval_matrix_is, 2, FUN = which.max)]
-# Remove low p-value predictions > 0.01
-prediction <- ifelse(apply(log10_pval_matrix_is, 2, FUN = max) > 2, prediction, "unassigned") # this is the step where it's possible to play with p-val threshold, even if it's not adviced
-# Store the prediction as metadata of the Seurat object
-zenodo4059315_integrated@meta.data$PredHGT.p2 <- prediction
+prediction <- rownames(log10_pval_matrix_is)[apply(log10_pval_matrix_is, 2, FUN = which.max)] # predict cell types based on signatures
+# Remove predictions with p-value > 0.01
+prediction <- ifelse(apply(log10_pval_matrix_is, 2, FUN = max) > 2, prediction, "unassigned")
+zenodo4059315_integrated@meta.data$PredHGT.p2 <- prediction # store the prediction as metadata
 zenodo4059315_integrated@assays[["PredHGT.p2"]] <- CreateAssayObject(data = log10_pval_matrix_is)
-# Then plot predicted cell types
+# Finally plot predicted cell types
 DimPlot(zenodo4059315_integrated, reduction = "mcumap", group.by = "PredHGT.p2", label = T, repel = T, pt.size = 0.1)
 sorted_cell_types <- c("Mono.", "Macro.", "Neutro.", "DC", "B.cells", "CD4.T.cells", "CD8.T.cells", "NK.cells", "EC.vei", "EC.glom", "EC.art", "vSMC", "Podo.", "PEC", "PTC.S1", "PTC.S2", "PTC.S3", "LoH.DTL", "LoH.ATL", "LoH.TAL", "DCT", "CNT", "PC.CCD", "PC.IMCD", "IC.A", "IC.B", "unassigned")
 zenodo4059315_integrated$PredHGT.p2 <- factor(x = zenodo4059315_integrated$PredHGT.p2, levels = sorted_cell_types)
 colors <- c("brown1", "brown3", "violetred", "darkgoldenrod", "cornflowerblue", "cyan2", "cyan3", "cyan4", "firebrick3", "firebrick2", "firebrick4", "coral", "darkorange", "blueviolet", "darkseagreen2", "darkseagreen3", "darkseagreen4", "deepskyblue2", "deepskyblue3", "deepskyblue4", "darksalmon", "sandybrown", "rosybrown2", "rosybrown4", "plum3", "plum4", "grey90")
 p1 <- DimPlot(zenodo4059315_integrated, reduction = "mcumap", group.by = "PredHGT.p2", pt.size = 0.1, label = T, repel = T, cols = colors) + ggtitle("Consensus signatures") # display the profile of the integrated dataset
 p1[[1]]$layers[[1]]$aes_params$alpha = 0.5
-p1 %>% ggsave(filename = paste(figure_dir, "6_sc_zenodo4059315_integrated_AnnotClusters_PredHGT_DimPlot_colors.png", sep=""), width = 200, height = 150, units = "mm")
-saveRDS(zenodo4059315_integrated, paste(RData_dir, "6_sc_zenodo4059315_PredHGT_integrated_backup.rds", sep = "")) 
-
-
+p1 %>% ggsave(filename = paste(figure_dir, "6_sc_zenodo4059315_integrated_AnnotClusters_PredHGT_DimPlot.png", sep=""), width = 200, height = 150, units = "mm")
+saveRDS(zenodo4059315_integrated, paste(RData_dir, "6_sc_zenodo4059315_PredHGT_integrated_backup.rds", sep = "")) # save zenodo4059315_integrated
 # ------------------------------ #
 # B. For snRNA-seq dataset
 # ------------------------------ #
@@ -902,12 +809,12 @@ saveRDS(zenodo4059315_integrated, paste(RData_dir, "6_sc_zenodo4059315_PredHGT_i
 # Lake BB, et al. A single-nucleus RNA-sequencing pipeline to decipher the molecular anatomy and pathophysiology of human kidneys. | PMID 31249312 | GSE121852
 gse121862 <- read.table("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE121862/GSE121862_UCSD-WU_Single_Nuclei_Cluster_Annotated_Raw_UMI_Matrix.tsv", sep = "\t", row.names = 1, header = T)
 gse121862 <- CreateSeuratObject(gse121862, project = "GSE121862", min.cells = 10, min.features = 200)
-# Retrieve labeled clusters from the Lake BB, et al.
+# Retrieve labeled clusters from Lake BB, et al., and adapt to the nomenclature of the consensus signatures
 gse121862@meta.data$seurat_clusters <- gse121862@meta.data$orig.ident
 old_cluster_names <- c("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "C13", "C14", "C15", "C16", "C17", "C18", "C19", "C20", "C21", "C22", "C23", "C24", "C25", "C26", "C27", "C28", "C29", "C30")
 new_cluster_names <- c("Epi.na", "Podo.", "PTC.S1", "PTC.S2", "PTC.na", "PTC.na", "PTC.S3", "LoH.DTL", "LoH.ATL", "LoH.ATL", "LoH.ATL", "LoH.TAL", "LoH.TAL", "DCT", "CNT", "PC.CCD", "PC.na", "PC.IMCD", "IC.A", "IC.A", "IC.B", "EC.glom", "EC.vei", "EC.vei", "EC.na", "Mes.", "vSMC", "Fibro.", "PTC.na", "Macro.")
-gse121862@meta.data$annot_clusters <- plyr::mapvalues(x = gse121862@meta.data$seurat_clusters, from = old_cluster_names, to = new_cluster_names) # replacing cluster names by cell types
-# ... and retrieve the sample origin of every single nucleus
+gse121862@meta.data$annot_clusters <- plyr::mapvalues(x = gse121862@meta.data$seurat_clusters, from = old_cluster_names, to = new_cluster_names) # replace cluster names by cell types
+# Retrieve the sample origin of every single nucleus
 tmp_ls <- c()
 for (i in 1:length(colnames(gse121862))) {
   tmp_tx <- as.list(str_split(colnames(gse121862)[[i]], "_", n = Inf, simplify = T))
@@ -915,14 +822,10 @@ for (i in 1:length(colnames(gse121862))) {
 }
 gse121862@meta.data$orig.ident <- tmp_ls
 rm(tmp_tx, tmp_ls)
-# ... finally, keep only control samples (donor kidney from MAT, see GSE121862_family.soft file)
-# gse121862 <- subset(gse121862, subset = orig.ident == "NK37" | orig.ident == "NK38" | orig.ident == "NK41" | orig.ident == "NK42" | orig.ident == "NK44" | orig.ident == "NK45" | orig.ident == "NK46" | orig.ident == "NK93" | orig.ident == "NK94")
-# ------------------------------ #
-# PROCESS DATA
-# First add some metadata
+# First, add some metadata and filter cells according to QC thresholds
 gse121862[["percent.mt"]] <- PercentageFeatureSet(gse121862, pattern = "^MT-")
 gse121862 <- subset(gse121862, subset = nFeature_RNA > 200 & nFeature_RNA < 3500 & percent.mt < 5)
-# Then process the data with normalization, scaling (using SCTransform) and dimension reductions
+# Normalisation step
 DefaultAssay(gse121862) <- "RNA"
 gse121862 <- SplitObject(gse121862, split.by = "orig.ident")
 for (i in 1:length(gse121862)) {
@@ -937,28 +840,21 @@ for (i in 1:length(gse121862)) {
   }
 }
 gse121862 <- gse121862[-tmp_ls]
-# Now we can run the PCA on every remaining sample (samples with > 100 cells)
-# for (i in 1:length(gse121862)) {
-#   gse121862[[i]] <- RunPCA(gse121862[[i]], features = VariableFeatures(gse121862[[i]]), assay = "SCT", npcs = 50, verbose = T)
-# }
+# Integration step
 integration_features <- SelectIntegrationFeatures(object.list = gse121862, nfeatures = 2500)
 gse121862 <- PrepSCTIntegration(object.list = gse121862, anchor.features = integration_features)
-gse121862_anchors <- FindIntegrationAnchors(object.list = gse121862, normalization.method = "SCT", anchor.features = integration_features) # reduction = "rpca"
-saveRDS(gse121862_anchors, paste(RData_dir, "6_sn_gse121862_anchors_backup.rds", sep = ""))
-# gse121862_anchors <- readRDS(paste(RData_dir, "6_sn_gse121862_anchors_backup.rds", sep = ""))
+gse121862_anchors <- FindIntegrationAnchors(object.list = gse121862, normalization.method = "SCT", anchor.features = integration_features)
 rm(gse121862)
 gse121862_integrated <- IntegrateData(anchorset = gse121862_anchors, normalization.method = "SCT", new.assay.name = "seurat.integration")
 rm(gse121862_anchors)
 saveRDS(gse121862_integrated, paste(RData_dir, "6_sn_gse121862_integrated_backup.rds", sep = "")) 
-# gse121862_integrated <- readRDS(paste(RData_dir, "6_sn_gse121862_integrated_backup.rds", sep = ""))
-gse121862_integrated <- RunMCA(gse121862_integrated, nmcs = 50, features = VariableFeatures(object = gse121862_integrated), assay = "SCT", verbose = T) # assay = "RNA"
-# Switch back to the "seurat.integration" assay as default, to compute every next step with this assay
+# Run dimensional reductions
+gse121862_integrated <- RunMCA(gse121862_integrated, nmcs = 50, features = VariableFeatures(object = gse121862_integrated), assay = "SCT", verbose = T)
 DefaultAssay(gse121862_integrated) <- "seurat.integration"
 gse121862_integrated <- RunPCA(gse121862_integrated, features = VariableFeatures(gse121862_integrated@assays$seurat.integration), assay = "seurat.integration", npcs = 50, verbose = T)
 gse121862_integrated <- RunUMAP(gse121862_integrated, reduction = "pca", dims = 1:30, verbose = T)
 gse121862_integrated <- RunTSNE(gse121862_integrated, reduction = "pca", dims = 1:30, verbose = T)
 gse121862_integrated <- RunMCUMAP(gse121862_integrated, reduction = "mca", dims = 1:30, verbose = T)
-DimPlot(gse121862_integrated, reduction = "mcumap", group.by = "annot_clusters", label = T, repel = T, pt.size = 0.1)
 sorted_cell_types <- c("Macro.", "EC.vei", "EC.glom", "EC.na", "vSMC", "Fibro.", "Mes.", "Podo.", "Epi.na", "PTC.S1", "PTC.S2", "PTC.S3", "PTC.na", "LoH.DTL", "LoH.ATL", "LoH.TAL", "DCT", "CNT", "PC.CCD", "PC.IMCD", "PC.na", "IC.A", "IC.B")
 gse121862_integrated$annot_clusters <- factor(x = gse121862_integrated$annot_clusters, levels = sorted_cell_types)
 colors = c("brown3", "firebrick3", "firebrick2", "grey90", "coral", "coral3", "blueviolet", "darkorange", "grey90", "darkseagreen2", "darkseagreen3", "darkseagreen4", "grey90", "deepskyblue2", "deepskyblue3", "deepskyblue4", "darksalmon", "sandybrown", "rosybrown2", "rosybrown4", "grey90", "plum3", "plum4")
@@ -967,26 +863,21 @@ p1 %>% ggsave(filename = paste(figure_dir, "6_sn_gse121862_integrated_AnnotClust
 p1[[1]]$layers[[1]]$aes_params$alpha = 0.5
 p2 <- DimPlot(gse121862_integrated, reduction = "mcumap", group.by = "orig.ident", label = F, pt.size = 0.1) + ggtitle("Samples") # check also batch integration
 plot_grid(p1, p2, ncol = 2, rel_widths = c(1, 1.1)) %>% ggsave(filename = paste(figure_dir, "6_sn_gse121862_integrated_AnnotClusters_vs_OrigIdent.png", sep=""), width = 450, height = 150, units = "mm")
-# Save again gse121862_integrated once everything is ok
-saveRDS(gse121862_integrated, paste(RData_dir, "6_sn_gse121862_integrated_backup.rds", sep = "")) 
-# gse121862_integrated <- readRDS(paste(RData_dir, "6_sn_gse121862_integrated_backup.rds", sep = ""))
-# Now try to identify cell types, based on the consensus signatures
-library(CelliD)
+saveRDS(gse121862_integrated, paste(RData_dir, "6_sn_gse121862_integrated_backup.rds", sep = "")) # save gse121862_integrated
+# ------------------------------ #
+# Perform single-nucleus enrichment of consensus signatures (using snRNA-seq signatures)
 set.seed(1)
 # Setting the signature of cell types as a list
 signatures <- as.list(read.table("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/external/220317_p2_signatures_snrnaseq.csv", header = T, sep = ";", fill = TRUE))
-# signatures <- signatures[-c(13, 17)] # remove ".na" signatures
 DefaultAssay(gse121862_integrated) <- "SCT"
-# Perform HGT-based enrichment to identify cell types
+# Perform enrichment
 log10_pval_matrix_is <- RunCellHGT(gse121862_integrated, reduction = "mca", pathways = signatures, dims = 1:50, log.trans = T, n.features = 500, minSize = 10)
-# Predict cell type based on signatures
-prediction <- rownames(log10_pval_matrix_is)[apply(log10_pval_matrix_is, 2, FUN = which.max)]
-# Remove low p-value predictions > 0.01
-prediction <- ifelse(apply(log10_pval_matrix_is, 2, FUN = max) > 2, prediction, "unassigned") # this is the step where it's possible to play with p-val threshold, even if it's not adviced
-# Store the prediction as metadata of the Seurat object
-gse121862_integrated@meta.data$PredHGT.p2 <- prediction
+prediction <- rownames(log10_pval_matrix_is)[apply(log10_pval_matrix_is, 2, FUN = which.max)] # predict cell types based on signatures
+# Remove predictions with p-value > 0.01
+prediction <- ifelse(apply(log10_pval_matrix_is, 2, FUN = max) > 2, prediction, "unassigned")
+gse121862_integrated@meta.data$PredHGT.p2 <- prediction # store the prediction as metadata
 gse121862_integrated@assays[["PredHGT.p2"]] <- CreateAssayObject(data = log10_pval_matrix_is)
-# Then plot predicted cell types
+# Finally plot predicted cell types
 DimPlot(gse121862_integrated, reduction = "mcumap", group.by = "PredHGT.p2", label = T, repel = T, pt.size = 0.1)
 sorted_cell_types <- c("Macro.", "EC.vei", "EC.glom", "EC.art", "vSMC", "Pericytes", "Fibro.", "Podo.", "PEC", "PTC.S1", "PTC.S2", "PTC.S3", "LoH.DTL", "LoH.ATL", "LoH.TAL", "DCT", "CNT", "PC.CCD", "PC.OMCD", "PC.IMCD", "IC.A", "IC.B", "unassigned")
 gse121862_integrated$PredHGT.p2 <- factor(x = gse121862_integrated$PredHGT.p2, levels = sorted_cell_types)
@@ -994,11 +885,11 @@ colors <- c("brown3", "firebrick3", "firebrick2", "firebrick4", "coral", "coral2
 p1 <- DimPlot(gse121862_integrated, reduction = "mcumap", group.by = "PredHGT.p2", pt.size = 0.1, label = T, repel = T, cols = colors) + ggtitle("Consensus signatures") # display the profile of the integrated dataset
 p1[[1]]$layers[[1]]$aes_params$alpha = 0.5
 p1 %>% ggsave(filename = paste(figure_dir, "6_sn_gse121862_integrated_AnnotClusters_PredHGT_DimPlot_colors.png", sep=""), width = 200, height = 150, units = "mm")
-saveRDS(gse121862_integrated, paste(RData_dir, "6_sn_gse121862_integrated_PredHGT_backup.rds", sep = ""))
+saveRDS(gse121862_integrated, paste(RData_dir, "6_sn_gse121862_integrated_PredHGT_backup.rds", sep = "")) # save gse121862_integrated
 
 
 # --------------------------------------------------
-# Figures pour l'article p2 - Quatredeniers, et al.
+# The script below reproduces the figures of the article
 # --------------------------------------------------
 # 1. scRNA-seq
 # --------------------------------------------------
@@ -1059,7 +950,7 @@ rm(sc_gsm_integrated, sc_gsm_merge)
 sn_gsm_integrated <- readRDS(paste(RData_dir, "3_sn_gsm_integrated_SeuratAnnot_backup.rds", sep = ""))
 sn_gsm_merge <- readRDS(paste(RData_dir, "2_sn_gsm_integrated_harmony_backup.rds", sep = ""))
 # --------------------------------------------------
-# Figure 2
+# Figure 3
 p1 <- DimPlot(sn_gsm_integrated, reduction = "umap", pt.size = 0.1, group.by = "orig.ident", label = F) + NoLegend()
 p2 <- DimPlot(sn_gsm_integrated, reduction = "umap", pt.size = 0.1, group.by = "batch.ident", label = F) + NoLegend()
 sn_gsm_integrated$sex.ident <- factor(x = sn_gsm_integrated$sex.ident, levels = c("M", "F"))
@@ -1095,7 +986,7 @@ sc_annot_markers <- read.table(paste(reports_dir, "3_sn_gsm_integrated_AnnotClus
 sc_top_annot_markers <- sc_annot_markers %>% group_by(cluster) %>% top_n(n = 3, wt = avg_log2FC)
 p1 <- DotPlot(sn_gsm_integrated, features = make.unique(sc_top_annot_markers$gene), assay = "SCT", cols = c("green", "red")) + RotatedAxis()
 p1 %>% ggsave(filename = paste(figure_dir, "Fig3D_DotPlot.png", sep = ""), width = 450, height = 160, units = "mm")
-# Supp. Figure 2: PCA / Harmony / Seurat v4
+# Supp. Figure 3: PCA / Harmony / Seurat v4
 p1 <- DimPlot(sn_gsm_merge, reduction = "pca", group.by = "orig.ident", pt.size = 0.1, raster = F) + theme(legend.position = "bottom")
 p1 %>% ggsave(filename = paste(figure_dir, "FigS3A_PCA_Harmony_SeuratV4_legend.png", sep=""), width = 300, height = 100, units = "mm")
 p1 <- DimPlot(sn_gsm_merge, reduction = "pca", group.by = "orig.ident", pt.size = 0.1, raster = F) + NoLegend() + ggtitle("Batch effects") 
@@ -1112,7 +1003,7 @@ rm(sn_gsm_integrated, sn_gsm_merge)
 # --------------------------------------------------
 scsn_integrated <- readRDS(paste(RData_dir, "5_scsn_integrated_backup3.rds", sep = ""))
 scsn_gsm_merge <- readRDS(paste(RData_dir, "5_scsn_gsm_integrated_harmony_backup.rds", sep = ""))
-# Figures
+# Figure 4
 colors <- c("brown1", "brown3", "violetred", "darkgoldenrod", "cornflowerblue", "cyan2", "cyan3", "cyan4", "firebrick3", "firebrick2", "firebrick4", "grey90", "coral", "coral2", "coral3", "darkorange", "blueviolet", "darkseagreen2", "darkseagreen3", "darkseagreen4", "grey90", "deepskyblue2", "deepskyblue3", "deepskyblue4", "grey90", "darksalmon", "sandybrown", "rosybrown2", "rosybrown3", "rosybrown4", "grey90", "plum3", "plum4", "plum1")
 p1 <- DimPlot(scsn_integrated, reduction = "umap", pt.size = 0.1, group.by = "orig.ident", label = F, raster = F) + NoLegend()
 p2 <- DimPlot(scsn_integrated, reduction = "umap", pt.size = 0.1, group.by = "techno.ident", label = F, raster = F) + NoLegend()
@@ -1135,7 +1026,7 @@ p1 %>% ggsave(filename = paste(figure_dir, "Fig4B_legend.png", sep=""), width = 
 p2 %>% ggsave(filename = paste(figure_dir, "Fig4C_legend.png", sep=""), width = 150, height = 150, units = "mm")
 p3 %>% ggsave(filename = paste(figure_dir, "Fig4D_legend.png", sep=""), width = 150, height = 150, units = "mm")
 p4 %>% ggsave(filename = paste(figure_dir, "Fig4E_legend.png", sep=""), width = 280, height = 150, units = "mm")
-# Figure 5A: PCA / Harmony / Seurat v4
+# PCA / Harmony / Seurat v4
 p1 <- DimPlot(scsn_gsm_merge, reduction = "pca", group.by = "orig.ident", pt.size = 0.1, raster = F) + theme(legend.position = "bottom")
 p1 %>% ggsave(filename = paste(figure_dir, "Fig4A_PCA_Harmony_SeuratV4_legend.png", sep=""), width = 300, height = 100, units = "mm")
 p1 <- DimPlot(scsn_gsm_merge, reduction = "pca", group.by = "orig.ident", pt.size = 0.1, raster = F) + NoLegend() + ggtitle("Batch effects") 
@@ -1151,6 +1042,7 @@ rm(scsn_integrated, scsn_gsm_merge)
 # 4. zenodo4059315_integrated (sc)
 # --------------------------------------------------
 zenodo4059315_integrated <- readRDS(paste(RData_dir, "6_sc_zenodo4059315_PredHGT_integrated_backup.rds", sep = ""))
+# Figure 5
 p1 <- DimPlot(zenodo4059315_integrated, reduction = "mcumap", pt.size = 0.1, group.by = "Patient.ID", label = F) # orig.ident
 colors = c("brown1", "brown3", "green", "darkgoldenrod", "cornflowerblue", "cyan2", "cyan4", "cornflowerblue", "firebrick3", "firebrick2", "firebrick4", "yellow", "firebrick1", "grey90", "coral", "coral2", "coral3", "coral4", "darkorange", "pink", "darkseagreen2", "darkseagreen3", "darkseagreen4", "grey90", "deepskyblue2", "deepskyblue4", "darksalmon", "sandybrown", "rosybrown2", "plum3", "plum4", "grey90", "orange", "magenta")
 p2 <- DimPlot(zenodo4059315_integrated, reduction = "mcumap", pt.size = 0.1, group.by = "annot_clusters", label = F, repel = F, cols = colors) + ggtitle("Labelling from Kuppe C, et al.") # Annotation.3
@@ -1175,6 +1067,7 @@ rm(zenodo4059315_integrated)
 # 5. gse121862_integrated (sn)
 # --------------------------------------------------
 gse121862_integrated <- readRDS(paste(RData_dir, "6_sn_gse121862_integrated_PredHGT_backup.rds", sep = ""))
+# Figure 5
 p1 <- DimPlot(gse121862_integrated, reduction = "mcumap", pt.size = 0.1, group.by = "orig.ident", label = F)
 colors = c("brown3", "firebrick3", "firebrick2", "grey90", "coral", "coral3", "blueviolet", "darkorange", "grey90", "darkseagreen2", "darkseagreen3", "darkseagreen4", "grey90", "deepskyblue2", "deepskyblue3", "deepskyblue4", "darksalmon", "sandybrown", "rosybrown2", "rosybrown4", "grey90", "plum3", "plum4")
 p2 <- DimPlot(gse121862_integrated, reduction = "mcumap", pt.size = 0.1, group.by = "annot_clusters", label = F, repel = F, cols = colors) + ggtitle("Labelling from Lake BB, et al.")
