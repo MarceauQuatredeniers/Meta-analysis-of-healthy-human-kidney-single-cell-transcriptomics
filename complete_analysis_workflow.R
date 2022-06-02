@@ -1088,7 +1088,3 @@ p2 %>% ggsave(filename = paste(figure_dir, "Fig5E.png", sep=""), width = 150, he
 p3 <- p3 + NoLegend() 
 p3 %>% ggsave(filename = paste(figure_dir, "Fig5F.png", sep=""), width = 150, height = 150, units = "mm")
 rm(gse121862_integrated)
-
-
-
-
