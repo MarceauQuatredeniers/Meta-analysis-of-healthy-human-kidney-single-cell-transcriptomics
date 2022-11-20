@@ -17,6 +17,7 @@ library(Seurat)
 library(readr)
 library(cowplot)
 # Set paths to the relevant folders
+ExtData_dir <- "~/wd/meta_analysis/data/extdata/"
 RData_dir <- "~/wd/meta_analysis/data/rdata/"
 reports_dir <- "~/wd/meta_analysis/reports/"
 data_processed_dir <- "~/wd/meta_analysis/data/processed/"
@@ -29,7 +30,7 @@ options(ggrepel.max.overlaps = Inf)
 # DATA LOADING
 # ------------------------------ #
 # (sn) Wu H, et al. Comparative Analysis and Refinement of Human PSC-Derived Kidney Organoid Differentiation with Single-Cell Transcriptomics. Cell Stem Cell 2018 Dec 6;23(6):869-881.e8. | PMID 30449713 | GSE118184
-gsm3320197 <- read.table("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE118184/human.dge.txt", sep = "\t", row.names = 1, header = T)
+gsm3320197 <- read.table(paste(ExtData_dir, "GSE118184/human.dge.txt", sep = ""), sep = "\t", row.names = 1, header = T)
 gsm3320197 <- CreateSeuratObject(gsm3320197, project = "GSM3320197", min.cells = 10, min.features = 200) # and GSM3320198, there are 2 replicates of the same individual in the matrix
 gsm3320197@meta.data$batch.ident <- "GSE118184"
 gsm3320197@meta.data$techno.ident <- "snRNAseq"
@@ -37,9 +38,9 @@ gsm3320197@meta.data$orig.ident <- "GSM3320197-8"
 gsm3320197@meta.data$sex.ident <- "M"
 # ------------------------------ #
 # (sn) Wilson PC, et al. The single-cell transcriptomic landscape of early human diabetic nephropathy. Proc Natl Acad Sci U S A. 2019 Sep 24;116(39):19619-19625. | PMID 31506348 | GSE131882 (GSM3823939/GSM4572192, GSM3823940/GSM4572193, GSM3823941/GSM4572194)
-gsm4572192 <- Read10X_h5("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE131882/GSM4572192_Control1_filtered_feature_bc_matrix.h5", use.names = TRUE, unique.features = TRUE)
-gsm4572193 <- Read10X_h5("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE131882/GSM4572193_Control2_filtered_feature_bc_matrix.h5", use.names = TRUE, unique.features = TRUE)
-gsm4572194 <- Read10X_h5("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE131882/GSM4572194_Control3_filtered_feature_bc_matrix.h5", use.names = TRUE, unique.features = TRUE)
+gsm4572192 <- Read10X_h5(paste(ExtData_dir, "GSE131882/GSM4572192_Control1_filtered_feature_bc_matrix.h5", sep = ""), use.names = TRUE, unique.features = TRUE)
+gsm4572193 <- Read10X_h5(paste(ExtData_dir, "GSE131882/GSM4572193_Control2_filtered_feature_bc_matrix.h5", sep = ""), use.names = TRUE, unique.features = TRUE)
+gsm4572194 <- Read10X_h5(paste(ExtData_dir, "GSE131882/GSM4572194_Control3_filtered_feature_bc_matrix.h5", sep = ""), use.names = TRUE, unique.features = TRUE)
 gsm4572192 <- CreateSeuratObject(gsm4572192, project = "GSM4572192", min.cells = 10, min.features = 200)
 gsm4572193 <- CreateSeuratObject(gsm4572193, project = "GSM4572193", min.cells = 10, min.features = 200)
 gsm4572194 <- CreateSeuratObject(gsm4572194, project = "GSM4572194", min.cells = 10, min.features = 200)
@@ -53,9 +54,9 @@ gse131882[[2]]@meta.data$sex.ident <- "M"
 gse131882[[3]]@meta.data$sex.ident <- "F"
 # ------------------------------ #
 # (sc) Liao J, et al. Single-cell RNA sequencing of human kidney. Sci Data. 2020 Jan 2;7(1):4. | PMID 31896769 | GSE131685 (GSM4145204, GSM4145205, GSM4145206)
-gsm4145204 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE131685/GSM4145204/")
-gsm4145205 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE131685/GSM4145205/")
-gsm4145206 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE131685/GSM4145206/")
+gsm4145204 <- Read10X(paste(ExtData_dir, "GSE131685/GSM4145204/", sep = ""))
+gsm4145205 <- Read10X(paste(ExtData_dir, "GSE131685/GSM4145205/", sep = ""))
+gsm4145206 <- Read10X(paste(ExtData_dir, "GSE131685/GSM4145206/", sep = ""))
 gsm4145204 <- CreateSeuratObject(gsm4145204, project = "GSM4145204", min.cells = 10, min.features = 200)
 gsm4145205 <- CreateSeuratObject(gsm4145205, project = "GSM4145205", min.cells = 10, min.features = 200)
 gsm4145206 <- CreateSeuratObject(gsm4145206, project = "GSM4145206", min.cells = 10, min.features = 200)
@@ -69,15 +70,15 @@ gse131685[[2]]@meta.data$sex.ident <- "F"
 gse131685[[3]]@meta.data$sex.ident <- "M"
 # ------------------------------ #
 # (sn) Wu H, et al. Single-Cell Transcriptomics of a Human Kidney Allograft Biopsy Specimen Defines a Diverse Inflammatory Response. J Am Soc Nephrol. 2018 Aug;29(8):2069-2080. | PMID 29980650 | GSE114156
-gsm3135714 <- read.table("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE114156/MTS.kidney.dge.txt", sep = "\t", row.names = 1, header = T)
+gsm3135714 <- read.table(paste(ExtData_dir, "GSE114156/MTS.kidney.dge.txt", sep = ""), sep = "\t", row.names = 1, header = T)
 gsm3135714 <- CreateSeuratObject(gsm3135714, project = "GSM3135714", min.cells = 10, min.features = 200)
 gsm3135714@meta.data$batch.ident <- "GSE114156"
 gsm3135714@meta.data$techno.ident <- "snRNAseq"
 gsm3135714@meta.data$sex.ident <- "M"
 # ------------------------------ #
 # (sn) Muto Y, et al. Single cell transcriptional and chromatin accessibility profiling redefine cellular heterogeneity in the adult human kidney. Nat Commun. 2021 Apr 13;12(1):2190. | PMID 33850129 | GSE151302
-gsm4572195 <- Read10X_h5("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE151302/GSM4572195_Control4_filtered_feature_bc_matrix.h5")
-gsm4572196 <- Read10X_h5("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE151302/GSM4572196_Control5_filtered_feature_bc_matrix.h5")
+gsm4572195 <- Read10X_h5(paste(ExtData_dir, "GSE151302/GSM4572195_Control4_filtered_feature_bc_matrix.h5", sep = ""))
+gsm4572196 <- Read10X_h5(paste(ExtData_dir, "GSE151302/GSM4572196_Control5_filtered_feature_bc_matrix.h5", sep = ""))
 gsm4572195 <- CreateSeuratObject(gsm4572195, project = "GSM4572195", min.cells = 10, min.features = 200)
 gsm4572196 <- CreateSeuratObject(gsm4572196, project = "GSM4572196", min.cells = 10, min.features = 200)
 gse151302 <- c(gsm4572195, gsm4572196)
@@ -89,12 +90,12 @@ gse151302[[1]]@meta.data$sex.ident <- "M"
 gse151302[[2]]@meta.data$sex.ident <- "F"
 # ------------------------------ #
 # (sc) Zhang Y, et al. Single-cell analyses of renal cell cancers reveal insights into tumor microenvironment, cell of origin, and therapy response. Proc Natl Acad Sci U S A 2021 Jun 15;118(24). | PMID 34099557 | GSE159115 (GSM4819727, GSM4819729, GSM4819730, GSM4819731, GSM4819734, GSM4819736)
-gsm4819726 <- Read10X_h5("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE159115/GSM4819726_SI_18856_filtered_gene_bc_matrices_h5.h5")
-gsm4819728 <- Read10X_h5("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE159115/GSM4819728_SI_19704_filtered_gene_bc_matrices_h5.h5")
-gsm4819730 <- Read10X_h5("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE159115/GSM4819730_SI_21255_filtered_gene_bc_matrices_h5.h5")
-gsm4819731 <- Read10X_h5("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE159115/GSM4819731_SI_21256_filtered_gene_bc_matrices_h5.h5")
-gsm4819733 <- Read10X_h5("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE159115/GSM4819733_SI_22369_filtered_gene_bc_matrices_h5.h5")
-gsm4819735 <- Read10X_h5("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE159115/GSM4819735_SI_22605_filtered_gene_bc_matrices_h5.h5")
+gsm4819726 <- Read10X_h5(paste(ExtData_dir, "GSE159115/GSM4819726_SI_18856_filtered_gene_bc_matrices_h5.h5", sep = ""))
+gsm4819728 <- Read10X_h5(paste(ExtData_dir, "GSE159115/GSM4819728_SI_19704_filtered_gene_bc_matrices_h5.h5", sep = ""))
+gsm4819730 <- Read10X_h5(paste(ExtData_dir, "GSE159115/GSM4819730_SI_21255_filtered_gene_bc_matrices_h5.h5", sep = ""))
+gsm4819731 <- Read10X_h5(paste(ExtData_dir, "GSE159115/GSM4819731_SI_21256_filtered_gene_bc_matrices_h5.h5", sep = ""))
+gsm4819733 <- Read10X_h5(paste(ExtData_dir, "GSE159115/GSM4819733_SI_22369_filtered_gene_bc_matrices_h5.h5", sep = ""))
+gsm4819735 <- Read10X_h5(paste(ExtData_dir, "GSE159115/GSM4819735_SI_22605_filtered_gene_bc_matrices_h5.h5", sep = ""))
 gsm4819726 <- CreateSeuratObject(gsm4819726, project = "GSM4819726", min.cells = 10, min.features = 200)
 gsm4819728 <- CreateSeuratObject(gsm4819728, project = "GSM4819728", min.cells = 10, min.features = 200)
 gsm4819730 <- CreateSeuratObject(gsm4819730, project = "GSM4819730", min.cells = 10, min.features = 200)
@@ -115,30 +116,30 @@ gse159115[[4]]@meta.data$sex.ident <- "M"
 gse159115[[5]]@meta.data$sex.ident <- "M"
 # ------------------------------ #
 # (sc) Menon R, et al. Single cell transcriptomics identifies focal segmental glomerulosclerosis remission endothelial biomarker. JCI Insight. 2020 Mar 26;5(6):e133267. | PMID 32107344 | GSE140989 (24 healthy adult kidney samples)
-gsm4191941 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191941/")
-gsm4191942 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191942/")
-gsm4191943 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191943/")
-gsm4191944 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191944/")
-gsm4191945 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191945/")
-gsm4191946 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191946/")
-gsm4191947 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191947/")
-gsm4191948 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191948/")
-gsm4191949 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191949/")
-gsm4191950 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191950/")
-gsm4191951 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191951/")
-gsm4191952 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191952/")
-gsm4191953 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191953/")
-gsm4191954 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191954/")
-gsm4191955 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191955/")
-gsm4191956 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191956/")
-gsm4191957 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191957/")
-gsm4191958 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191958/")
-gsm4191959 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191959/")
-gsm4191960 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191960/")
-gsm4191961 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191961/")
-gsm4191962 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191962/")
-gsm4191963 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191963/")
-gsm4191964 <- Read10X("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE140989/GSM4191964/")
+gsm4191941 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191941/", sep = ""))
+gsm4191942 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191942/", sep = ""))
+gsm4191943 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191943/", sep = ""))
+gsm4191944 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191944/", sep = ""))
+gsm4191945 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191945/", sep = ""))
+gsm4191946 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191946/", sep = ""))
+gsm4191947 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191947/", sep = ""))
+gsm4191948 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191948/", sep = ""))
+gsm4191949 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191949/", sep = ""))
+gsm4191950 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191950/", sep = ""))
+gsm4191951 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191951/", sep = ""))
+gsm4191952 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191952/", sep = ""))
+gsm4191953 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191953/", sep = ""))
+gsm4191954 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191954/", sep = ""))
+gsm4191955 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191955/", sep = ""))
+gsm4191956 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191956/", sep = ""))
+gsm4191957 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191957/", sep = ""))
+gsm4191958 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191958/", sep = ""))
+gsm4191959 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191959/", sep = ""))
+gsm4191960 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191960/", sep = ""))
+gsm4191961 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191961/", sep = ""))
+gsm4191962 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191962/", sep = ""))
+gsm4191963 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191963/", sep = ""))
+gsm4191964 <- Read10X(paste(ExtData_dir, "GSE140989/GSM4191964/", sep = ""))
 gsm4191941 <- CreateSeuratObject(gsm4191941, project = "GSM4191941", min.cells = 10, min.features = 200)
 gsm4191942 <- CreateSeuratObject(gsm4191942, project = "GSM4191942", min.cells = 10, min.features = 200)
 gsm4191943 <- CreateSeuratObject(gsm4191943, project = "GSM4191943", min.cells = 10, min.features = 200)
@@ -725,19 +726,19 @@ p1 %>% ggsave(filename = paste(figure_dir, "5_scsn_integrated_AnnotClusters_Spli
 # ------------------------------ #
 # First, load the query dataset (that must contain metadata with the labels from authors)
 # Kuppe C, et al. Decoding myofibroblast origins in human kidney fibrosis. Nature. 2021 Jan;589(7841):281-286. | PMID  33176333 | zenodo 4059315
-cd10_neg <- ReadMtx(mtx = "/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/zenodo4059315/CD10_neg/kidneyMap_UMI_counts.mtx", 
-                    features = "/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/zenodo4059315/CD10_neg/cd10neg_Map_UMI_counts_rowData.txt", 
-                    cells = "/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/zenodo4059315/CD10_neg/cd10neg_Map_UMI_counts_colData.txt",
+cd10_neg <- ReadMtx(mtx = paste(ExtData_dir, "zenodo4059315/CD10_neg/kidneyMap_UMI_counts.mtx", sep = ""), 
+                    features = paste(ExtData_dir, "zenodo4059315/CD10_neg/cd10neg_Map_UMI_counts_rowData.txt", sep = ""), 
+                    cells = paste(ExtData_dir, "zenodo4059315/CD10_neg/cd10neg_Map_UMI_counts_colData.txt", sep = ""),
                     cell.column = 1, skip.cell = 1,
                     feature.column = 1, skip.feature = 1)
-metadata <- read.csv("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/zenodo4059315/CD10_neg/cd10neg_metadata.csv", sep = ";")
+metadata <- read.csv(paste(ExtData_dir, "zenodo4059315/CD10_neg/cd10neg_metadata.csv", sep = ""), sep = ";")
 cd10_neg <- CreateSeuratObject(cd10_neg, project = "CD10-", min.cells = 10, min.features = 200, meta.data = metadata)
-cd10_pos <- ReadMtx(mtx = "/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/zenodo4059315/CD10_pos/PTmap_UMI_counts.mtx", 
-                    features = "/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/zenodo4059315/CD10_pos/cd10pos_Map_UMI_counts_rowData.txt", 
-                    cells = "/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/zenodo4059315/CD10_pos/cd10pos_Map_UMI_counts_colData.txt",
+cd10_pos <- ReadMtx(mtx = paste(ExtData_dir, "zenodo4059315/CD10_pos/PTmap_UMI_counts.mtx", sep = ""), 
+                    features = paste(ExtData_dir, "zenodo4059315/CD10_pos/cd10pos_Map_UMI_counts_rowData.txt", sep = ""), 
+                    cells = paste(ExtData_dir, "zenodo4059315/CD10_pos/cd10pos_Map_UMI_counts_colData.txt", sep = ""),
                     cell.column = 1, skip.cell = 1,
                     feature.column = 1, skip.feature = 1)
-metadata <- read.csv("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/zenodo4059315/CD10_pos/cd10pos_metadata.csv", sep = ";")
+metadata <- read.csv(paste(ExtData_dir, "zenodo4059315/CD10_pos/cd10pos_metadata.csv", sep = ""), sep = ";")
 cd10_pos <- CreateSeuratObject(cd10_pos, project = "CD10+", min.cells = 10, min.features = 200, meta.data = metadata) 
 zenodo4059315 <- merge(cd10_neg, cd10_pos) # full kidney dataset is now reconstructed
 rm(cd10_neg, cd10_pos) # free up RAM
@@ -784,7 +785,7 @@ saveRDS(zenodo4059315_integrated, paste(RData_dir, "6_sc_zenodo4059315_integrate
 library(CelliD)
 set.seed(1) 
 # Setting the signature of cell types as a list
-signatures <- as.list(read.table("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/external/220317_p2_signatures_scrnaseq.csv", header = T, sep = ";", fill = TRUE))
+signatures <- as.list(read.table(paste(ExtData_dir, "signatures_scrnaseq.csv", sep = ""), header = T, sep = ";", fill = TRUE)) # one should create an appropriate signature_scrnaseq.csv file (based on 3_sc_gsm_integrated_AnnotClusters_CellTypeMarkers_SCT.csv) formated for CellID, prior to the following section
 DefaultAssay(zenodo4059315_integrated) <- "SCT"
 # Perform enrichment
 log10_pval_matrix_is <- RunCellHGT(zenodo4059315_integrated, reduction = "mca", pathways = signatures, dims = 1:50, log.trans = T, n.features = 500, minSize = 10)
@@ -807,7 +808,7 @@ saveRDS(zenodo4059315_integrated, paste(RData_dir, "6_sc_zenodo4059315_PredHGT_i
 # ------------------------------ #
 # First, load the query dataset (that must contain metadata with the labels from authors)
 # Lake BB, et al. A single-nucleus RNA-sequencing pipeline to decipher the molecular anatomy and pathophysiology of human kidneys. | PMID 31249312 | GSE121852
-gse121862 <- read.table("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/raw/GSE121862/GSE121862_UCSD-WU_Single_Nuclei_Cluster_Annotated_Raw_UMI_Matrix.tsv", sep = "\t", row.names = 1, header = T)
+gse121862 <- read.table(paste(ExtData_dir, "GSE121862/GSE121862_UCSD-WU_Single_Nuclei_Cluster_Annotated_Raw_UMI_Matrix.tsv", sep = ""), sep = "\t", row.names = 1, header = T)
 gse121862 <- CreateSeuratObject(gse121862, project = "GSE121862", min.cells = 10, min.features = 200)
 # Retrieve labeled clusters from Lake BB, et al., and adapt to the nomenclature of the consensus signatures
 gse121862@meta.data$seurat_clusters <- gse121862@meta.data$orig.ident
@@ -868,7 +869,7 @@ saveRDS(gse121862_integrated, paste(RData_dir, "6_sn_gse121862_integrated_backup
 # Perform single-nucleus enrichment of consensus signatures (using snRNA-seq signatures)
 set.seed(1)
 # Setting the signature of cell types as a list
-signatures <- as.list(read.table("/data-cbl/mquatre/p2_scrnaseq_renal_landscape/data/external/220317_p2_signatures_snrnaseq.csv", header = T, sep = ";", fill = TRUE))
+signatures <- as.list(read.table(paste(ExtData_dir, "signatures_snrnaseq.csv", sep = ""), header = T, sep = ";", fill = TRUE)) # one should create an appropriate signature_snrnaseq.csv file (based on 3_sn_gsm_integrated_AnnotClusters_CellTypeMarkers_SCT.csv) formated for CellID, prior to the following section
 DefaultAssay(gse121862_integrated) <- "SCT"
 # Perform enrichment
 log10_pval_matrix_is <- RunCellHGT(gse121862_integrated, reduction = "mca", pathways = signatures, dims = 1:50, log.trans = T, n.features = 500, minSize = 10)
