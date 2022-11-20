@@ -1,6 +1,6 @@
 # ------------------------------ #
 # The workflow presented in this script allows to reproduce the meta-analysis of kidney scRNA-seq and snRNA-seq datasets
-# presented in Quatredeniers M, et al. XXX. 2022. | PMID:  | doi: XXX
+# presented in Quatredeniers, M. et al. Sci Data. 2022. | PMID:  | doi: 
 # ------------------------------ #
 
 
