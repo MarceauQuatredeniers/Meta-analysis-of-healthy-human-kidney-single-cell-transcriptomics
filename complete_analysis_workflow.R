@@ -2,6 +2,8 @@
 # The workflow presented in this script allows to reproduce the meta-analysis of kidney scRNA-seq and snRNA-seq datasets
 # presented in Quatredeniers, M. et al. Sci Data. 2022. | PMID:  | doi: 
 # ------------------------------ #
+# Before running the script below, please download appropriate datasets. GSE and GSM accession numbers, or zenodo ID, are indicated for each dataset.
+# Refer to the publication for more details.
 
 
 # ------------------------------ #
