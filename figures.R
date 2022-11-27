@@ -16,10 +16,10 @@ library(pheatmap)
 library(RColorBrewer)
 library(ggplotify)
 # Then set the path to the relevant folders
-RData_dir <- "/data-cbl/mquatre/p2_scrnaseq_renal_landscape/reports/220517_SCTransform_v1_Seurat_v4/data/"
-reports_dir <- "/data-cbl/mquatre/p2_scrnaseq_renal_landscape/reports/220517_SCTransform_v1_Seurat_v4/"
-data_processed_dir <- "/data-cbl/mquatre/p2_scrnaseq_renal_landscape/reports/220517_SCTransform_v1_Seurat_v4/data/"
-figure_dir <- "/data-cbl/mquatre/p2_scrnaseq_renal_landscape/reports/220517_SCTransform_v1_Seurat_v4/figures/"
+RData_dir <- "~/metaanalysis/data/rdata/"
+reports_dir <- "~/metaanalysis/reports/"
+data_processed_dir <- "~/metaanalysis/data/processed/"
+figure_dir <- "~/metaanalysis/reports/figures/"
 # Finally set options if needed
 options(ggrepel.max.overlaps = Inf)
 
