@@ -166,10 +166,10 @@ for (i in 1:length(gse140989)) {
 }
 # We need 2 different pipelines to process data from sn- and scRNA-seq studies
 # (the overall strategy is to integrate scRNA-seq samples in one hand, integrate snRNA-seq studies in another hand, then integrate the 2 datasets together)
-# Create a list of scRNA-seq S4 objects to integrate
+# Create a list of scRNA-seq Seurat objects to integrate
 sc_gsm_list <- c(gse131685, gse159115, gse140989)
 sc_gsm_names <- c("GSM4145204", "GSM4145205", "GSM4145206", "GSM4819726", "GSM4819728", "GSM4819730-1", "GSM4819733", "GSM4819735", "GSM4191941", "GSM4191942", "GSM4191943", "GSM4191944", "GSM4191945", "GSM4191946", "GSM4191947", "GSM4191948", "GSM4191949", "GSM4191950", "GSM4191951", "GSM4191952", "GSM4191953", "GSM4191954", "GSM4191955", "GSM4191956", "GSM4191957", "GSM4191958", "GSM4191959", "GSM4191960", "GSM4191961", "GSM4191962", "GSM4191963", "GSM4191964")
-# Then create a list of snRNA-seq S4 objects to integrate
+# Then create a list of snRNA-seq Seurat objects to integrate
 sn_gsm_list <- c(gsm3320197, gse131882, gsm3135714, gse151302)
 sn_gsm_names <- c("GSM3320197-8", "GSM3823939", "GSM3823940", "GSM3823941", "GSM3135714", "GSM4572195", "GSM4572196")
 
