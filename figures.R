@@ -2,8 +2,6 @@
 # Computational analysis of kidney single cell datasets
 # The overall goal is to integrate different control samples from various sources to get an average overview of the kidney cell landscape 
 # ------------------------------ #
-# Part B. FIGURES
-# ------------------------------ #
 # INITIALISATION
 # Load the necessary packages
 library(Rcpp)
@@ -17,7 +15,6 @@ library(cowplot)
 library(pheatmap)
 library(RColorBrewer)
 library(ggplotify)
-# library(slingshot, quietly = F)
 # Then set the path to the relevant folders
 RData_dir <- "/data-cbl/mquatre/p2_scrnaseq_renal_landscape/reports/220517_SCTransform_v1_Seurat_v4/data/"
 reports_dir <- "/data-cbl/mquatre/p2_scrnaseq_renal_landscape/reports/220517_SCTransform_v1_Seurat_v4/"
