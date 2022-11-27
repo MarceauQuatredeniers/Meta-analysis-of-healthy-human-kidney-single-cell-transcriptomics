@@ -1,10 +1,4 @@
 # ------------------------------ #
-# Part A. ANALYSIS
-# ------------------------------ #
-
-
-# BiocManager::install("slingshot")
-# ------------------------------ #
 # INITIALISATION
 # Load the necessary packages
 library(Rcpp)
