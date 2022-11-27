@@ -15,7 +15,6 @@ library(tidyverse)
 library(Seurat)
 library(readr)
 library(cowplot)
-# library(slingshot, quietly = F)
 # Then set the path to the relevant folders
 RData_dir <- "~/metaanalysis/data/rdata/"
 reports_dir <- "~/metaanalysis/reports/"
